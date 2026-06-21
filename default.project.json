@@ -1,0 +1,33 @@
+{
+    "name": "GemPowerCore",
+    "tree": {
+        "$className": "DataModel",
+        "ReplicatedStorage": {
+            "$className": "ReplicatedStorage",
+            "Config": {
+                "$path": "src/ReplicatedStorage/Config"
+            }
+        },
+        "ServerScriptService": {
+            "$className": "ServerScriptService",
+            "Main": {
+                "$path": "src/ServerScriptService/Main.server.luau"
+            },
+            "Modules": {
+                "$path": "src/ServerScriptService/Modules"
+            }
+        },
+        "StarterPlayer": {
+            "$className": "StarterPlayer",
+            "StarterPlayerScripts": {
+                "$className": "StarterPlayerScripts",
+                "Main": {
+                    "$path": "src/StarterPlayer/StarterPlayerScripts/Main.client.luau"
+                },
+                "Modules": {
+                    "$path": "src/StarterPlayer/StarterPlayerScripts/Modules"
+                }
+            }
+        }
+    }
+}
