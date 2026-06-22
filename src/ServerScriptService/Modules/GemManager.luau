@@ -1,18 +1,14 @@
--- Handles gem extraction from nodes.
--- Gem nodes in workspace must live in a Folder called "GemNodes".
--- Each node Part needs two Attributes set in Studio:
---   GemType  (string)  e.g. "Crystite"
---   Remaining (number) e.g. 50
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local GameConfig = require(ReplicatedStorage.Config.GameConfig)
-local GemTypes   = require(ReplicatedStorage.Config.GemTypes)
+local GameConfig  = require(ReplicatedStorage.Config.GameConfig)
+local GemTypes    = require(ReplicatedStorage.Config.GemTypes)
+local GearTypes   = require(ReplicatedStorage.Config.GearTypes)
+local PotionTypes = require(ReplicatedStorage.Config.PotionTypes)
 
 local GemManager = {}
 local DataManager
 local Remotes
-local extractions = {}  -- userId -> { node, thread }
+local extractions = {}   -- userId -> { node, thread }
 
 function GemManager.Init(dm, remotes)
     DataManager = dm
@@ -28,6 +24,30 @@ local function respawnNode(node, gemType)
     end)
 end
 
+-- Compute effective extraction time considering drill gear and potion
+local function effectiveExtractTime(data, baseTime)
+    local reduction = 0
+    if data.gear.drill then
+        reduction += GearTypes.Drill[data.gear.drill.tier].timeReduction
+    end
+    local now = os.time()
+    if data.activePotions.ExtractionRush and data.activePotions.ExtractionRush > now then
+        reduction += PotionTypes.ExtractionRush.effects.extractReduction
+    end
+    reduction = math.min(reduction, 0.85)  -- cap at 85% so there's always a floor
+    return math.max(baseTime * (1 - reduction), GameConfig.MIN_EXTRACT_TIME)
+end
+
+-- How many gems per tick (Node Bounty potion doubles it)
+local function gemsPerTick(data)
+    local now = os.time()
+    local bonus = 0
+    if data.activePotions.NodeBounty and data.activePotions.NodeBounty > now then
+        bonus += PotionTypes.NodeBounty.effects.gemYieldBonus
+    end
+    return 1 + bonus
+end
+
 function GemManager.StartExtraction(player, node)
     if extractions[player.UserId] then
         return false, "Already extracting"
@@ -36,47 +56,54 @@ function GemManager.StartExtraction(player, node)
         return false, "Invalid node"
     end
 
-    local gemType  = node:GetAttribute("GemType")
+    local gemType   = node:GetAttribute("GemType")
     local remaining = node:GetAttribute("Remaining") or 0
 
-    if not gemType or remaining <= 0 then
-        return false, "Node depleted or invalid"
-    end
-    if not GemTypes[gemType] then
-        return false, "Unknown gem type"
-    end
+    if not gemType or remaining <= 0       then return false, "Node depleted" end
+    if not GemTypes[gemType]               then return false, "Unknown gem type" end
 
     local gemData = GemTypes[gemType]
 
     local thread = task.spawn(function()
         while true do
-            task.wait(gemData.extractTime)
-
-            remaining = node:GetAttribute("Remaining") or 0
-            if remaining <= 0 then
-                GemManager.StopExtraction(player)
-                return
-            end
-
             local data = DataManager.Get(player)
             if not data then return end
 
-            data.gems[gemType]          = (data.gems[gemType] or 0) + 1
-            data.stats.gemsCollected    += 1
+            local waitTime = effectiveExtractTime(data, gemData.extractTime)
+            task.wait(waitTime)
 
-            remaining -= 1
+            -- Re-read in case node was depleted by another process
+            remaining = node:GetAttribute("Remaining") or 0
+            if remaining <= 0 then
+                GemManager.StopExtraction(player)
+                if Remotes then
+                    Remotes.Notification:FireClient(player, "Node depleted. Find another source.")
+                end
+                return
+            end
+
+            data = DataManager.Get(player)
+            if not data then return end
+
+            local yield = gemsPerTick(data)
+            data.gems[gemType]          = (data.gems[gemType] or 0) + yield
+            data.stats.gemsCollected    += yield
+
+            remaining = math.max(remaining - 1, 0)
             node:SetAttribute("Remaining", remaining)
 
             if Remotes then
                 Remotes.UpdateInventory:FireClient(player, data.gems)
-                Remotes.GemExtracted:FireClient(player, gemType, remaining)
+                Remotes.GemExtracted:FireClient(player, gemType, remaining, yield)
             end
 
             if remaining <= 0 then
-                local nodeParent = node.Parent
                 node.Parent = nil
                 respawnNode(node, gemType)
                 GemManager.StopExtraction(player)
+                if Remotes then
+                    Remotes.Notification:FireClient(player, "Node exhausted. Respawns in 5 minutes.")
+                end
                 return
             end
         end

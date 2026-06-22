@@ -1,24 +1,31 @@
 return {
     MAX_PLAYERS         = 6,
     STARTING_CREDITS    = 500,
-    INCOME_TICK_RATE    = 1,       -- seconds between income ticks
-    MARKET_FEE_PERCENT  = 5,       -- % fee taken from each sale
-    MAX_MARKET_LISTINGS = 10,      -- max active listings per player
-    GEM_NODE_RESPAWN    = 300,     -- 5 minutes before a depleted node respawns
-    SAVE_INTERVAL       = 60,      -- auto-save every 60 seconds
-    LEADERBOARD_RATE    = 5,       -- leaderboard refresh rate (seconds)
+    INCOME_TICK_RATE    = 1,
+    MARKET_FEE_PERCENT  = 5,
+    MAX_MARKET_LISTINGS = 10,
+    GEM_NODE_RESPAWN    = 300,
+    SAVE_INTERVAL       = 60,
+    LEADERBOARD_RATE    = 5,
 
-    -- Fill these in AFTER publishing your game on Roblox
+    -- How much rarer gems benefit from higher core levels.
+    -- income = gem.baseFuel × (core.baseMultiplier + gem.rarityTier × coreLevel × RESONANCE_SCALING)
+    RESONANCE_SCALING   = 0.08,
+
+    -- Minimum extraction time after drill/potion reductions (seconds)
+    MIN_EXTRACT_TIME    = 0.4,
+
     GAMEPASSES = {
-        DOUBLE_INCOME   = 0,   -- 2x income multiplier
-        AUTO_EXTRACT    = 0,   -- auto-mines nearby gem nodes
-        EXTRA_SLOTS     = 0,   -- +2 gem slots on any core tier
-        VIP             = 0,   -- cosmetic aura + 1.5x bonus
+        DOUBLE_INCOME   = 0,
+        AUTO_EXTRACT    = 0,
+        EXTRA_SLOTS     = 0,
+        VIP             = 0,
     },
     PRODUCTS = {
-        CREDITS_SMALL   = 0,   -- grants 10,000 credits
-        CREDITS_MEDIUM  = 0,   -- grants 100,000 credits
-        CREDITS_LARGE   = 0,   -- grants 1,000,000 credits
-        RARE_GEM_PACK   = 0,   -- grants 5 Neutronium + 10 Voidstone
+        CREDITS_SMALL   = 0,   -- 50,000 credits
+        CREDITS_MEDIUM  = 0,   -- 500,000 credits
+        CREDITS_LARGE   = 0,   -- 5,000,000 credits
+        RARE_GEM_PACK   = 0,   -- 5 Neutronium + 10 Voidstone
+        ENERGY_POTION   = 0,   -- instant Energy Surge potion
     },
 }

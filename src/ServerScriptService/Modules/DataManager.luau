@@ -1,21 +1,33 @@
-local DataStoreService = game:GetService("DataStoreService")
-local Players          = game:GetService("Players")
+local DataStoreService  = game:GetService("DataStoreService")
+local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GameConfig"))
 
-local STORE = DataStoreService:GetDataStore("GemPowerCoreV1")
+local STORE = DataStoreService:GetDataStore("GemPowerCoreV2")
 
 local DEFAULT_DATA = {
-    credits      = GameConfig.STARTING_CREDITS,
-    totalEarned  = 0,
-    gems         = {},    -- { [gemType] = count }
-    coreLevel    = 1,
-    coreSlots    = {},    -- { [slotIndex] = gemType }
+    credits         = GameConfig.STARTING_CREDITS,
+    totalEarned     = 0,
+    gems            = {},
+    coreLevel       = 1,
+    coreSlots       = {},
+    -- Gear: one piece per category, nil means nothing equipped
+    gear = {
+        conductor   = nil,   -- { tier = N } or nil
+        amplifier   = nil,
+        capacitor   = nil,
+        drill       = nil,
+    },
+    craftedGear     = {},    -- [{ category="Conductor", tier=1 }, ...]
+    potionInventory = {},    -- { potionType = count }
+    activePotions   = {},    -- { potionType = expiresAtUnixTime }
     stats = {
         gemsCollected   = 0,
         creditsEarned   = 0,
         tradesCompleted = 0,
+        gearsCreated    = 0,
+        potionsUsed     = 0,
     },
 }
 
@@ -48,9 +60,7 @@ function DataManager.Load(player)
         mergeMissing(data, DEFAULT_DATA)
     else
         data = deepCopy(DEFAULT_DATA)
-        if not ok then
-            warn("[DataManager] Load failed for", player.Name, result)
-        end
+        if not ok then warn("[DataManager] Load failed for", player.Name, result) end
     end
     cache[player.UserId] = data
     return data
@@ -61,9 +71,7 @@ function DataManager.Save(player)
     if not data then return end
     local key = "p_" .. player.UserId
     local ok, err = pcall(STORE.SetAsync, STORE, key, data)
-    if not ok then
-        warn("[DataManager] Save failed for", player.Name, err)
-    end
+    if not ok then warn("[DataManager] Save failed for", player.Name, err) end
 end
 
 function DataManager.Get(player)
@@ -75,7 +83,6 @@ function DataManager.Unload(player)
     cache[player.UserId] = nil
 end
 
--- Auto-save loop
 task.spawn(function()
     while true do
         task.wait(GameConfig.SAVE_INTERVAL)

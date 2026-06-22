@@ -4,11 +4,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GameConfig  = require(ReplicatedStorage.Config.GameConfig)
 local GemTypes    = require(ReplicatedStorage.Config.GemTypes)
 local CoreTypes   = require(ReplicatedStorage.Config.PowerCoreTypes)
+local GearTypes   = require(ReplicatedStorage.Config.GearTypes)
+local PotionTypes = require(ReplicatedStorage.Config.PotionTypes)
 
 local PowerCoreManager = {}
 local DataManager
 local Remotes
-local MonetizationManager  -- set after init to avoid circular require
+local MonetizationManager
 
 function PowerCoreManager.Init(dm, remotes)
     DataManager = dm
@@ -19,39 +21,75 @@ function PowerCoreManager.SetMonetization(m)
     MonetizationManager = m
 end
 
+-- Returns the effective max slots for a player's current setup
+function PowerCoreManager.GetMaxSlots(player)
+    local data = DataManager.Get(player)
+    if not data then return 0 end
+    local base = CoreTypes[data.coreLevel].maxSlots
+    if data.gear.capacitor then
+        base += GearTypes.Capacitor[data.gear.capacitor.tier].extraSlots
+    end
+    if MonetizationManager and MonetizationManager.HasExtraSlots(player) then
+        base += 2
+    end
+    return base
+end
+
+-- Core income formula:
+-- per-slot = gem.baseFuel * (1 + amplifierBonus) * (core.baseMultiplier + gem.rarityTier * coreLevel * RESONANCE_SCALING)
+-- total    = sum(per-slot) * (1 + conductorBonus) * potionMultiplier * gampassMultiplier
 function PowerCoreManager.GetIncomeRate(player)
     local data = DataManager.Get(player)
     if not data then return 0 end
 
     local coreData = CoreTypes[data.coreLevel]
-    local base = 0
+    local RS = GameConfig.RESONANCE_SCALING
 
+    -- Gear bonuses
+    local amplifierBonus  = data.gear.amplifier  and GearTypes.Amplifier[data.gear.amplifier.tier].fuelBonus    or 0
+    local conductorBonus  = data.gear.conductor  and GearTypes.Conductor[data.gear.conductor.tier].incomeBonus  or 0
+
+    -- Sum per-slot income
+    local base = 0
     for _, gemType in pairs(data.coreSlots) do
         if gemType and GemTypes[gemType] then
-            base += GemTypes[gemType].fuelValue
+            local gem       = GemTypes[gemType]
+            local resonance = coreData.baseMultiplier + gem.rarityTier * data.coreLevel * RS
+            local fuel      = gem.baseFuel * (1 + amplifierBonus)
+            base += fuel * resonance
         end
     end
 
-    local income = base * coreData.multiplier
+    -- Conductor
+    base = base * (1 + conductorBonus)
 
-    if MonetizationManager and MonetizationManager.HasDoubleIncome(player) then
-        income *= 2
+    -- Active potions
+    local now = os.time()
+    local potionBonus = 0
+    for potionType, expiresAt in pairs(data.activePotions) do
+        if expiresAt > now then
+            local pd = PotionTypes[potionType]
+            if pd and pd.effects.incomeBonus then
+                potionBonus += pd.effects.incomeBonus
+            end
+        end
+    end
+    base = base * (1 + potionBonus)
+
+    -- Gamepasses
+    if MonetizationManager then
+        if MonetizationManager.HasDoubleIncome(player) then base *= 2 end
+        if MonetizationManager.HasVIP(player)          then base *= 1.5 end
     end
 
-    return income
+    return base
 end
 
 function PowerCoreManager.SlotGem(player, gemType, slotIndex)
     local data = DataManager.Get(player)
     if not data then return false, "No data" end
 
-    local coreData = CoreTypes[data.coreLevel]
-
-    local maxSlots = coreData.maxSlots
-    if MonetizationManager and MonetizationManager.HasExtraSlots(player) then
-        maxSlots += 2
-    end
-
+    local maxSlots = PowerCoreManager.GetMaxSlots(player)
     if slotIndex < 1 or slotIndex > maxSlots then
         return false, "Invalid slot index"
     end
@@ -59,7 +97,6 @@ function PowerCoreManager.SlotGem(player, gemType, slotIndex)
         return false, "No gem of that type"
     end
 
-    -- Return whatever was previously in this slot
     local existing = data.coreSlots[slotIndex]
     if existing then
         data.gems[existing] = (data.gems[existing] or 0) + 1
@@ -68,7 +105,6 @@ function PowerCoreManager.SlotGem(player, gemType, slotIndex)
     data.gems[gemType] -= 1
     if data.gems[gemType] <= 0 then data.gems[gemType] = nil end
     data.coreSlots[slotIndex] = gemType
-
     return true
 end
 
@@ -89,15 +125,11 @@ function PowerCoreManager.UpgradeCore(player)
     if not data then return false, "No data" end
 
     local coreData = CoreTypes[data.coreLevel]
-    if not coreData.upgradeCost then
-        return false, "Already at max level"
-    end
-    if data.credits < coreData.upgradeCost then
-        return false, "Not enough credits"
-    end
+    if not coreData.upgradeCost then return false, "Already at max level" end
+    if data.credits < coreData.upgradeCost then return false, "Not enough credits" end
 
-    data.credits    -= coreData.upgradeCost
-    data.coreLevel  += 1
+    data.credits   -= coreData.upgradeCost
+    data.coreLevel += 1
     return true
 end
 
@@ -110,9 +142,9 @@ function PowerCoreManager.StartIncomeLoop()
                 if data then
                     local income = PowerCoreManager.GetIncomeRate(player)
                     if income > 0 then
-                        data.credits                += income
-                        data.totalEarned            += income
-                        data.stats.creditsEarned    += income
+                        data.credits             += income
+                        data.totalEarned         += income
+                        data.stats.creditsEarned += income
                         if Remotes then
                             Remotes.UpdateHUD:FireClient(player, {
                                 credits     = data.credits,

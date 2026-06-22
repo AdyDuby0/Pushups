@@ -1,39 +1,65 @@
--- Each gem type: fuel value = credits/second when slotted into a core
+-- rarityTier (1-6) feeds into the resonance formula:
+-- resonance = core.baseMultiplier + gem.rarityTier * coreLevel * RESONANCE_SCALING
+-- Higher rarity gems scale MUCH better in higher-tier cores.
 return {
     Crystite = {
         displayName = "Crystite Shard",
         rarity      = "Common",
-        fuelValue   = 10,
+        rarityTier  = 1,
+        baseFuel    = 5,
         color       = Color3.fromRGB(100, 200, 255),
-        nodeYield   = 50,    -- gems per node before depleted
-        extractTime = 2,     -- seconds per gem extracted
-        tradeValue  = 50,    -- suggested market base price
+        nodeYield   = 100,
+        extractTime = 1.5,
+        tradeValue  = 30,
     },
     Voidstone = {
         displayName = "Voidstone Fragment",
         rarity      = "Uncommon",
-        fuelValue   = 35,
+        rarityTier  = 2,
+        baseFuel    = 20,
         color       = Color3.fromRGB(150, 50, 255),
-        nodeYield   = 30,
-        extractTime = 4,
-        tradeValue  = 200,
+        nodeYield   = 60,
+        extractTime = 3,
+        tradeValue  = 150,
     },
     Neutronium = {
         displayName = "Neutronium Core",
         rarity      = "Rare",
-        fuelValue   = 100,
+        rarityTier  = 3,
+        baseFuel    = 80,
         color       = Color3.fromRGB(255, 150, 0),
-        nodeYield   = 15,
-        extractTime = 8,
-        tradeValue  = 800,
+        nodeYield   = 30,
+        extractTime = 7,
+        tradeValue  = 700,
     },
     SingularityCore = {
         displayName = "Singularity Core",
         rarity      = "Legendary",
-        fuelValue   = 500,
+        rarityTier  = 4,
+        baseFuel    = 350,
         color       = Color3.fromRGB(255, 50, 50),
+        nodeYield   = 12,
+        extractTime = 15,
+        tradeValue  = 4000,
+    },
+    PrimordialEssence = {
+        displayName = "Primordial Essence",
+        rarity      = "Mythic",
+        rarityTier  = 5,
+        baseFuel    = 1500,
+        color       = Color3.fromRGB(255, 180, 255),
         nodeYield   = 5,
-        extractTime = 20,
-        tradeValue  = 5000,
+        extractTime = 30,
+        tradeValue  = 25000,
+    },
+    CosmicShard = {
+        displayName = "Cosmic Shard",
+        rarity      = "Cosmic",
+        rarityTier  = 6,
+        baseFuel    = 8000,
+        color       = Color3.fromRGB(200, 255, 255),
+        nodeYield   = 2,
+        extractTime = 60,
+        tradeValue  = 200000,
     },
 }
