@@ -285,7 +285,7 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
     -- Panel
     local panel = Instance.new("Frame")
     panel.Name            = "CorePanel"
-    panel.Size            = UDim2.new(0, 360, 0, 604)
+    panel.Size            = UDim2.new(0, 360, 0, 660)
     panel.Position        = UDim2.new(0, 8, 0, 110)
     panel.BackgroundColor3 = Color3.fromRGB(8, 8, 22)
     panel.BackgroundTransparency = 0.08
@@ -389,7 +389,7 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
     -- Core upgrades container (rows stacked vertically)
     upgradesFrame = Instance.new("Frame")
     upgradesFrame.Name            = "UpgradesFrame"
-    upgradesFrame.Size            = UDim2.new(1, -8, 0, 100)
+    upgradesFrame.Size            = UDim2.new(1, -8, 0, 156)
     upgradesFrame.Position        = UDim2.new(0, 4, 0, 430)
     upgradesFrame.BackgroundTransparency = 1
     upgradesFrame.BorderSizePixel = 0

@@ -20,8 +20,9 @@ return {
     -- next cost = floor(baseCost * growth ^ currentLevel)
     -- income is multiplied by (1 + sum(level * bonusPerLevel))
     CORE_UPGRADES = {
-        { key = "overclock", name = "Overclock",   icon = "⚡", bonusPerLevel = 0.05, baseCost = 150,  growth = 1.15 },
-        { key = "surge",     name = "Power Surge",  icon = "🔋", bonusPerLevel = 0.15, baseCost = 2000, growth = 1.27 },
+        { key = "overclock",   name = "Overclock",         icon = "⚡", bonusPerLevel = 0.12, baseCost = 100,   growth = 1.13 },
+        { key = "surge",       name = "Power Surge",       icon = "🔋", bonusPerLevel = 0.35, baseCost = 1500,  growth = 1.22 },
+        { key = "singularity", name = "Singularity Drive", icon = "🌌", bonusPerLevel = 1.00, baseCost = 75000, growth = 1.30 },
     },
 
     GAMEPASSES = {

@@ -10,6 +10,20 @@ local listings  = {}
 local listingsFrame
 local selectedGem
 
+-- Filter state for the listings view
+local filterGem  = nil        -- nil = show all gem types
+local priceSort  = "none"     -- "none" | "asc" | "desc"
+local filterBtn, sortBtn      -- buttons whose labels reflect current filter
+
+-- Ordered list of gem types (rarest last) used to cycle the type filter
+local gemOrder = {}
+do
+    for gemType, gd in pairs(GemTypes) do
+        table.insert(gemOrder, { t = gemType, tier = gd.rarityTier or 0 })
+    end
+    table.sort(gemOrder, function(a, b) return a.tier < b.tier end)
+end
+
 local function fmt(n)
     n = math.floor(n)
     if n >= 1e6 then return string.format("%.2fM", n/1e6)
@@ -32,7 +46,36 @@ local function refreshListings()
 
     local localId = Players.LocalPlayer.UserId
 
+    -- Apply gem-type filter, then optional price sort, to a working copy
+    local view = {}
     for _, l in ipairs(listings) do
+        if not filterGem or l.gemType == filterGem then
+            table.insert(view, l)
+        end
+    end
+    if priceSort == "asc" then
+        table.sort(view, function(a, b) return a.priceEach < b.priceEach end)
+    elseif priceSort == "desc" then
+        table.sort(view, function(a, b) return a.priceEach > b.priceEach end)
+    end
+
+    if #view == 0 then
+        local empty = Instance.new("Frame")
+        empty.Size             = UDim2.new(1, -4, 0, 44)
+        empty.BackgroundTransparency = 1
+        empty.BorderSizePixel  = 0
+        empty.Parent           = listingsFrame
+        local lbl = Instance.new("TextLabel")
+        lbl.Size                 = UDim2.new(1, 0, 1, 0)
+        lbl.BackgroundTransparency = 1
+        lbl.Text                 = filterGem and "No listings for that gem." or "No active listings."
+        lbl.TextColor3           = Color3.fromRGB(130, 130, 160)
+        lbl.Font                 = Enum.Font.Gotham
+        lbl.TextScaled           = true
+        lbl.Parent               = empty
+    end
+
+    for _, l in ipairs(view) do
         local gd = GemTypes[l.gemType]
         if not gd then continue end
 
@@ -291,9 +334,70 @@ function MarketUI.Init(playerGui, initData, RF)
     listLbl.TextXAlignment       = Enum.TextXAlignment.Left
     listLbl.Parent               = panel
 
+    -- ── Filter bar: gem-type filter + price sort ─────────────────────────────
+    local function gemDisplay(gemType)
+        local gd = GemTypes[gemType]
+        return gd and gd.displayName or gemType
+    end
+
+    filterBtn = Instance.new("TextButton")
+    filterBtn.Size            = UDim2.new(0.58, -2, 0, 30)
+    filterBtn.Position        = UDim2.new(0, 4, 0, 224)
+    filterBtn.BackgroundColor3 = Color3.fromRGB(28, 28, 58)
+    filterBtn.BorderSizePixel = 0
+    filterBtn.Text            = "Filter: All ▾"
+    filterBtn.TextColor3      = Color3.fromRGB(200, 220, 255)
+    filterBtn.Font            = Enum.Font.Gotham
+    filterBtn.TextScaled      = true
+    filterBtn.Parent          = panel
+    corner(filterBtn, 5)
+
+    sortBtn = Instance.new("TextButton")
+    sortBtn.Size            = UDim2.new(0.42, -6, 0, 30)
+    sortBtn.Position        = UDim2.new(0.58, 2, 0, 224)
+    sortBtn.BackgroundColor3 = Color3.fromRGB(28, 28, 58)
+    sortBtn.BorderSizePixel = 0
+    sortBtn.Text            = "Price: —"
+    sortBtn.TextColor3      = Color3.fromRGB(255, 220, 120)
+    sortBtn.Font            = Enum.Font.Gotham
+    sortBtn.TextScaled      = true
+    sortBtn.Parent          = panel
+    corner(sortBtn, 5)
+
+    -- Cycle the gem-type filter: All → each gem (rarest last) → All
+    filterBtn.MouseButton1Click:Connect(function()
+        local idx = 0  -- 0 means "All"
+        if filterGem then
+            for i, g in ipairs(gemOrder) do
+                if g.t == filterGem then idx = i; break end
+            end
+        end
+        idx += 1
+        if idx > #gemOrder then
+            filterGem = nil
+            filterBtn.Text = "Filter: All ▾"
+        else
+            filterGem = gemOrder[idx].t
+            filterBtn.Text = "Filter: " .. gemDisplay(filterGem) .. " ▾"
+        end
+        refreshListings()
+    end)
+
+    -- Cycle price sort: none → low→high → high→low → none
+    sortBtn.MouseButton1Click:Connect(function()
+        if priceSort == "none" then
+            priceSort = "asc";  sortBtn.Text = "Price: ↑"
+        elseif priceSort == "asc" then
+            priceSort = "desc"; sortBtn.Text = "Price: ↓"
+        else
+            priceSort = "none"; sortBtn.Text = "Price: —"
+        end
+        refreshListings()
+    end)
+
     local scroll = Instance.new("ScrollingFrame")
-    scroll.Size              = UDim2.new(1, -8, 1, -228)
-    scroll.Position          = UDim2.new(0, 4, 0, 226)
+    scroll.Size              = UDim2.new(1, -8, 1, -262)
+    scroll.Position          = UDim2.new(0, 4, 0, 260)
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel   = 0
     scroll.ScrollBarThickness = 4
