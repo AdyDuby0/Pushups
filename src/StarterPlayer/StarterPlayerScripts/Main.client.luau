@@ -59,29 +59,29 @@ TutorialManager.Start(playerGui, initData)
 
 -- ── Server event hooks ────────────────────────────────────────────────────────
 
-R.UpdateHUD:Connect(function(hudData)
+R.UpdateHUD.OnClientEvent:Connect(function(hudData)
     HUD.Update(hudData)
     if hudData.credits then
         CraftingUI.UpdateCredits(hudData.credits)
     end
 end)
 
-R.UpdateInventory:Connect(function(gems)
+R.UpdateInventory.OnClientEvent:Connect(function(gems)
     PlotUI.UpdateGems(gems)
     MarketUI.UpdateGems(gems)
     CraftingUI.UpdateGems(gems)
 end)
 
-R.UpdateMarket:Connect(function(newListings)
+R.UpdateMarket.OnClientEvent:Connect(function(newListings)
     MarketUI.UpdateListings(newListings)
 end)
 
-R.UpdateLeaderboard:Connect(function(board)
+R.UpdateLeaderboard.OnClientEvent:Connect(function(board)
     HUD.UpdateLeaderboard(board)
 end)
 
 local firstExtraction = true
-R.GemExtracted:Connect(function(gemType, remaining, yield, extractTime)
+R.GemExtracted.OnClientEvent:Connect(function(gemType, remaining, yield, extractTime)
     local text = yield > 1 and ("+" .. yield .. "× " .. gemType) or ("+" .. gemType)
     HUD.ShowFloatingText(text, Color3.fromRGB(80, 255, 80))
 
@@ -98,11 +98,11 @@ R.GemExtracted:Connect(function(gemType, remaining, yield, extractTime)
     end
 end)
 
-R.Notification:Connect(function(msg)
+R.Notification.OnClientEvent:Connect(function(msg)
     HUD.ShowNotification(msg)
 end)
 
-R.UpdatePotions:Connect(function(activePotions)
+R.UpdatePotions.OnClientEvent:Connect(function(activePotions)
     HUD.UpdatePotions(activePotions)
 end)
 
