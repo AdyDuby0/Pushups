@@ -116,9 +116,18 @@ UserInputService.InputBegan:Connect(function(input, processed)
     if input.UserInputType ~= Enum.UserInputType.MouseButton1
     and input.UserInputType ~= Enum.UserInputType.Touch then return end
 
-    local camera  = workspace.CurrentCamera
-    local ray     = camera:ScreenPointToRay(input.Position.X, input.Position.Y)
-    local result  = workspace:Raycast(ray.Origin, ray.Direction * 60)
+    local camera   = workspace.CurrentCamera
+    local screenPos = (input.UserInputType == Enum.UserInputType.Touch)
+        and input.Position
+        or UserInputService:GetMouseLocation()
+    local ray      = camera:ScreenPointToRay(screenPos.X, screenPos.Y)
+
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    if player.Character then
+        params.FilterDescendantsInstances = { player.Character }
+    end
+    local result   = workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
 
     if result and result.Instance and result.Instance:GetAttribute("GemType") then
         local node = result.Instance
