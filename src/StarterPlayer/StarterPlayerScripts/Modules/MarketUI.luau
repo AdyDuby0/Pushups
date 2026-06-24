@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players           = game:GetService("Players")
 local GemTypes          = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GemTypes"))
+local Panels            = require(script.Parent:WaitForChild("Panels"))
 
 local MarketUI = {}
 local RF_ref
@@ -309,9 +310,14 @@ function MarketUI.Init(playerGui, initData, RF)
     refreshListings()
 
     local open = false
+    Panels.Register("Market", function()
+        open = false
+        panel.Visible = false
+    end)
     toggleBtn.MouseButton1Click:Connect(function()
         open = not open
         panel.Visible = open
+        if open then Panels.CloseOthers("Market") end
     end)
 end
 

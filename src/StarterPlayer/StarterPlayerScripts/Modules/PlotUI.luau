@@ -1,11 +1,16 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GemTypes   = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GemTypes"))
 local CoreTypes  = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("PowerCoreTypes"))
+local Panels     = require(script.Parent:WaitForChild("Panels"))
 
 local PlotUI = {}
 local RF_ref
+local callbacks_ref
 local data = { coreLevel = 1, coreSlots = {}, gems = {}, credits = 0 }
 local slotsGrid, gemsScroll, coreTitle, coreMult, upgradeBtn
+
+-- Forward declarations so the two refresh functions can call each other
+local refreshSlots, refreshGems
 
 local function fmt(n)
     n = math.floor(n)
@@ -20,7 +25,7 @@ local function corner(inst, r)
     c.Parent = inst
 end
 
-local function refreshSlots()
+function refreshSlots()
     if not slotsGrid then return end
     for _, c in ipairs(slotsGrid:GetChildren()) do
         if c:IsA("Frame") or c:IsA("TextButton") then c:Destroy() end
@@ -89,7 +94,7 @@ local function refreshSlots()
     end
 end
 
-local function refreshGems()
+function refreshGems()
     if not gemsScroll then return end
     for _, c in ipairs(gemsScroll:GetChildren()) do
         if c:IsA("Frame") then c:Destroy() end
@@ -163,7 +168,7 @@ local function refreshGems()
                     if data.gems[captG] <= 0 then data.gems[captG] = nil end
                     refreshSlots()
                     refreshGems()
-                    if callbacks and callbacks.onFirstSlot then callbacks.onFirstSlot() end
+                    if callbacks_ref and callbacks_ref.onFirstSlot then callbacks_ref.onFirstSlot() end
                 end
             end)
         end
@@ -172,6 +177,7 @@ end
 
 function PlotUI.Init(playerGui, initData, RF, callbacks)
     RF_ref = RF
+    callbacks_ref = callbacks
     data.coreLevel = initData.coreLevel
     data.coreSlots = initData.coreSlots
     data.gems      = initData.gems
@@ -313,13 +319,18 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
 
     -- Toggle
     local open = false
+    Panels.Register("PowerCore", function()
+        open = false
+        panel.Visible = false
+    end)
     toggleBtn.MouseButton1Click:Connect(function()
         open = not open
         panel.Visible = open
         if open then
+            Panels.CloseOthers("PowerCore")
             refreshSlots()
             refreshGems()
-            if callbacks and callbacks.onCoreOpened then callbacks.onCoreOpened() end
+            if callbacks_ref and callbacks_ref.onCoreOpened then callbacks_ref.onCoreOpened() end
         end
     end)
 

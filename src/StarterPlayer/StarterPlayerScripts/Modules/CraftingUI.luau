@@ -4,6 +4,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GearTypes    = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GearTypes"))
 local PotionTypes  = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("PotionTypes"))
+local Panels       = require(script.Parent:WaitForChild("Panels"))
 
 local CraftingUI = {}
 local RF_ref
@@ -64,141 +65,146 @@ local function costText(cost)
     return table.concat(parts, "  +  ")
 end
 
-local function rebuildGear()
+local rebuildGear  -- forward declaration (row buttons call it)
+
+-- Lower number = higher on the list. Craftable rises to the top.
+local function gearPriority(category, tier)
+    if canAfford(GearTypes[category][tier].craftCost) and not owned(category, tier) then
+        return 0  -- craftable right now
+    end
+    if equipped(category, tier) then return 1 end
+    if owned(category, tier)    then return 2 end
+    return 3  -- locked
+end
+
+local function makeGearRow(category, tier)
+    local gd = GearTypes[category][tier]
+    local isOwned    = owned(category, tier)
+    local isEquipped = equipped(category, tier)
+    local affordable = canAfford(gd.craftCost)
+    local craftable  = affordable and not isOwned
+
+    local statusIcon = isEquipped and "✔ "
+        or (isOwned and "📦 ")
+        or (craftable and "🔨 " or "🔒 ")
+
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, -4, 0, 52)
+    row.BackgroundColor3 = isEquipped and Color3.fromRGB(40, 60, 20)
+        or (craftable and Color3.fromRGB(22, 34, 58) or Color3.fromRGB(18, 18, 35))
+    row.BackgroundTransparency = 0.25
+    row.BorderSizePixel = 0
+    row.Parent = gearListFrame
+    corner(row, 5)
+
+    local nameLbl = Instance.new("TextLabel")
+    nameLbl.Size = UDim2.new(0.55, -8, 0.55, 0)
+    nameLbl.Position = UDim2.new(0, 8, 0, 2)
+    nameLbl.BackgroundTransparency = 1
+    nameLbl.Text = statusIcon .. gd.name
+    nameLbl.TextColor3 = isEquipped and Color3.fromRGB(100, 255, 100)
+        or (craftable and Color3.fromRGB(150, 220, 255) or Color3.fromRGB(220, 220, 255))
+    nameLbl.Font = Enum.Font.GothamBold
+    nameLbl.TextScaled = true
+    nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+    nameLbl.Parent = row
+
+    local costLbl = Instance.new("TextLabel")
+    costLbl.Size = UDim2.new(0.55, -8, 0.42, 0)
+    costLbl.Position = UDim2.new(0, 8, 0.55, 0)
+    costLbl.BackgroundTransparency = 1
+    costLbl.Text = isOwned and GEAR_DESCS[category] or costText(gd.craftCost)
+    costLbl.TextColor3 = isOwned and Color3.fromRGB(150, 200, 150)
+        or (affordable and Color3.fromRGB(255, 220, 80) or Color3.fromRGB(180, 100, 100))
+    costLbl.Font = Enum.Font.Gotham
+    costLbl.TextScaled = true
+    costLbl.TextXAlignment = Enum.TextXAlignment.Left
+    costLbl.Parent = row
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.4, -6, 0.75, 0)
+    btn.Position = UDim2.new(0.6, 3, 0.125, 0)
+    btn.BorderSizePixel = 0
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.Gotham
+    btn.TextScaled = true
+    btn.Parent = row
+    corner(btn, 4)
+
+    if isEquipped then
+        btn.BackgroundColor3 = Color3.fromRGB(100, 60, 20)
+        btn.Text = "Unequip"
+        local capCat = category
+        btn.MouseButton1Click:Connect(function()
+            RF_ref.UnequipGear:InvokeServer(capCat)
+            local key = string.lower(capCat)
+            if playerData.gear[key] then
+                table.insert(playerData.craftedGear, { category = capCat, tier = playerData.gear[key].tier })
+                playerData.gear[key] = nil
+            end
+            rebuildGear()
+        end)
+    elseif isOwned then
+        btn.BackgroundColor3 = Color3.fromRGB(40, 120, 40)
+        btn.Text = "Equip"
+        local capCat, capTier = category, tier
+        btn.MouseButton1Click:Connect(function()
+            local ok = RF_ref.EquipGear:InvokeServer(capCat, capTier)
+            if ok then
+                local key = string.lower(capCat)
+                local oldTier = playerData.gear[key] and playerData.gear[key].tier
+                if oldTier then
+                    table.insert(playerData.craftedGear, { category = capCat, tier = oldTier })
+                end
+                for i, g in ipairs(playerData.craftedGear) do
+                    if g.category == capCat and g.tier == capTier then
+                        table.remove(playerData.craftedGear, i); break
+                    end
+                end
+                playerData.gear[key] = { tier = capTier }
+                rebuildGear()
+            end
+        end)
+    else
+        btn.BackgroundColor3 = affordable and Color3.fromRGB(50, 80, 180) or Color3.fromRGB(60, 60, 80)
+        btn.Text = affordable and "Craft" or "Locked"
+        if affordable then
+            local capCat, capTier = category, tier
+            btn.MouseButton1Click:Connect(function()
+                local ok = RF_ref.CraftGear:InvokeServer(capCat, capTier)
+                if ok then
+                    table.insert(playerData.craftedGear, { category = capCat, tier = capTier })
+                    playerData.credits -= GearTypes[capCat][capTier].craftCost.credits
+                    rebuildGear()
+                end
+            end)
+        end
+    end
+end
+
+function rebuildGear()
     if not gearListFrame then return end
     for _, c in ipairs(gearListFrame:GetChildren()) do
         if c:IsA("Frame") then c:Destroy() end
     end
 
-    for _, category in ipairs(GEAR_CATEGORIES) do
-        local catData = GearTypes[category]
-
-        -- Category header
-        local header = Instance.new("Frame")
-        header.Size = UDim2.new(1, -4, 0, 28)
-        header.BackgroundColor3 = Color3.fromRGB(30, 20, 60)
-        header.BackgroundTransparency = 0.1
-        header.BorderSizePixel = 0
-        header.Parent = gearListFrame
-        corner(header, 4)
-
-        local hLbl = Instance.new("TextLabel")
-        hLbl.Size = UDim2.new(1, -8, 1, 0)
-        hLbl.Position = UDim2.new(0, 8, 0, 0)
-        hLbl.BackgroundTransparency = 1
-        hLbl.Text = category:upper() .. " — " .. GEAR_DESCS[category]
-        hLbl.TextColor3 = Color3.fromRGB(200, 160, 255)
-        hLbl.Font = Enum.Font.GothamBold
-        hLbl.TextScaled = true
-        hLbl.TextXAlignment = Enum.TextXAlignment.Left
-        hLbl.Parent = header
-
+    -- Flatten every gear piece, then sort so the items you can act on come first
+    local entries = {}
+    for ci, category in ipairs(GEAR_CATEGORIES) do
         for tier = 1, 4 do
-            local gd = catData[tier]
-            local isOwned    = owned(category, tier)
-            local isEquipped = equipped(category, tier)
-            local affordable = canAfford(gd.craftCost)
-
-            local row = Instance.new("Frame")
-            row.Size = UDim2.new(1, -4, 0, 52)
-            row.BackgroundColor3 = isEquipped
-                and Color3.fromRGB(40, 60, 20)
-                or  Color3.fromRGB(18, 18, 35)
-            row.BackgroundTransparency = 0.25
-            row.BorderSizePixel = 0
-            row.Parent = gearListFrame
-            corner(row, 5)
-
-            local nameLbl = Instance.new("TextLabel")
-            nameLbl.Size = UDim2.new(0.55, -8, 0.55, 0)
-            nameLbl.Position = UDim2.new(0, 8, 0, 2)
-            nameLbl.BackgroundTransparency = 1
-            nameLbl.Text = (isEquipped and "✔ " or "") .. gd.name
-            nameLbl.TextColor3 = isEquipped
-                and Color3.fromRGB(100, 255, 100)
-                or  Color3.fromRGB(220, 220, 255)
-            nameLbl.Font = Enum.Font.GothamBold
-            nameLbl.TextScaled = true
-            nameLbl.TextXAlignment = Enum.TextXAlignment.Left
-            nameLbl.Parent = row
-
-            local costLbl = Instance.new("TextLabel")
-            costLbl.Size = UDim2.new(0.55, -8, 0.42, 0)
-            costLbl.Position = UDim2.new(0, 8, 0.55, 0)
-            costLbl.BackgroundTransparency = 1
-            costLbl.Text = isOwned and "(owned)" or costText(gd.craftCost)
-            costLbl.TextColor3 = isOwned
-                and Color3.fromRGB(150, 200, 150)
-                or (affordable and Color3.fromRGB(255, 220, 80) or Color3.fromRGB(180, 100, 100))
-            costLbl.Font = Enum.Font.Gotham
-            costLbl.TextScaled = true
-            costLbl.TextXAlignment = Enum.TextXAlignment.Left
-            costLbl.Parent = row
-
-            local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(0.4, -6, 0.75, 0)
-            btn.Position = UDim2.new(0.6, 3, 0.125, 0)
-            btn.BorderSizePixel = 0
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            btn.Font = Enum.Font.Gotham
-            btn.TextScaled = true
-            btn.Parent = row
-            corner(btn, 4)
-
-            if isEquipped then
-                btn.BackgroundColor3 = Color3.fromRGB(100, 60, 20)
-                btn.Text = "Unequip"
-                local capCat, capTier = category, tier
-                btn.MouseButton1Click:Connect(function()
-                    RF_ref.UnequipGear:InvokeServer(capCat)
-                    local key = string.lower(capCat)
-                    -- Put back in craftedGear locally
-                    if playerData.gear[key] then
-                        table.insert(playerData.craftedGear, { category = capCat, tier = playerData.gear[key].tier })
-                        playerData.gear[key] = nil
-                    end
-                    rebuildGear()
-                end)
-            elseif isOwned then
-                btn.BackgroundColor3 = Color3.fromRGB(40, 120, 40)
-                btn.Text = "Equip"
-                local capCat, capTier = category, tier
-                btn.MouseButton1Click:Connect(function()
-                    local ok = RF_ref.EquipGear:InvokeServer(capCat, capTier)
-                    if ok then
-                        local key = string.lower(capCat)
-                        local oldTier = playerData.gear[key] and playerData.gear[key].tier
-                        if oldTier then
-                            table.insert(playerData.craftedGear, { category = capCat, tier = oldTier })
-                        end
-                        -- Remove from craftedGear
-                        for i, g in ipairs(playerData.craftedGear) do
-                            if g.category == capCat and g.tier == capTier then
-                                table.remove(playerData.craftedGear, i); break
-                            end
-                        end
-                        playerData.gear[key] = { tier = capTier }
-                        rebuildGear()
-                    end
-                end)
-            else
-                btn.BackgroundColor3 = affordable
-                    and Color3.fromRGB(50, 80, 180)
-                    or  Color3.fromRGB(60, 60, 80)
-                btn.Text = affordable and "Craft" or "Locked"
-                if affordable then
-                    local capCat, capTier = category, tier
-                    btn.MouseButton1Click:Connect(function()
-                        local ok, err = RF_ref.CraftGear:InvokeServer(capCat, capTier)
-                        if ok then
-                            table.insert(playerData.craftedGear, { category = capCat, tier = capTier })
-                            playerData.credits -= GearTypes[capCat][capTier].craftCost.credits
-                            rebuildGear()
-                        end
-                    end)
-                end
-            end
+            table.insert(entries, { category = category, tier = tier, ci = ci })
         end
+    end
+    table.sort(entries, function(a, b)
+        local pa = gearPriority(a.category, a.tier)
+        local pb = gearPriority(b.category, b.tier)
+        if pa ~= pb then return pa < pb end
+        if a.ci ~= b.ci then return a.ci < b.ci end
+        return a.tier < b.tier
+    end)
+
+    for _, e in ipairs(entries) do
+        makeGearRow(e.category, e.tier)
     end
 end
 
@@ -208,7 +214,19 @@ local function rebuildPotions()
         if c:IsA("Frame") then c:Destroy() end
     end
 
+    -- Sort: brewable potions first, then by name (stable, unlike pairs())
+    local potionEntries = {}
     for potionType, pd in pairs(PotionTypes) do
+        table.insert(potionEntries, { t = potionType, pd = pd })
+    end
+    table.sort(potionEntries, function(a, b)
+        local aa, ba = canAfford(a.pd.craftCost), canAfford(b.pd.craftCost)
+        if aa ~= ba then return aa end
+        return a.pd.displayName < b.pd.displayName
+    end)
+
+    for _, entry in ipairs(potionEntries) do
+        local potionType, pd = entry.t, entry.pd
         local count     = playerData.potionInventory[potionType] or 0
         local affordable = canAfford(pd.craftCost)
 
@@ -452,10 +470,17 @@ function CraftingUI.Init(playerGui, initData, RF)
     rebuildGear()
 
     local open = false
+    Panels.Register("Crafting", function()
+        open = false
+        panel.Visible = false
+    end)
     toggleBtn.MouseButton1Click:Connect(function()
         open = not open
         panel.Visible = open
-        if open then rebuildGear() end
+        if open then
+            Panels.CloseOthers("Crafting")
+            rebuildGear()
+        end
     end)
 end
 

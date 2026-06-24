@@ -114,7 +114,6 @@ local extracting   = false
 local currentNode  = nil
 
 local function onNodeClicked(node)
-    print("[GemPowerCore] node clicked:", node.Name, "GemType=", node:GetAttribute("GemType"))
     if not node:GetAttribute("GemType") then return end
 
     if not extracting then
@@ -123,7 +122,6 @@ local function onNodeClicked(node)
         local gemType   = node:GetAttribute("GemType")
         local remaining = node:GetAttribute("Remaining") or 0
         local ok, extractTime = RF.StartExtraction:InvokeServer(node)
-        print("[GemPowerCore] StartExtraction returned:", ok, extractTime)
         if ok then
             NodeFeedback.Attach(node, gemType, remaining, extractTime or 1.5)
             HUD.ShowNotification("Extracting " .. gemType .. "… click again to stop.")
@@ -177,4 +175,4 @@ else
     warn("[GemPowerCore] Workspace.GemNodes folder not found — gem nodes won't be clickable.")
 end
 
-print("[GemPowerCore] Client ready — v3 (clickdetector). Wired " .. wiredCount .. " gem node(s).")
+print("[GemPowerCore] Client ready. Wired " .. wiredCount .. " gem node(s).")
