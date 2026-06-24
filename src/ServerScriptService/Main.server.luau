@@ -74,6 +74,7 @@ RFn.GetInitialData.OnServerInvoke = function(player)
     if not data then return nil end
     return {
         credits         = data.credits,
+        gemCurrency     = data.gemCurrency or 0,
         totalEarned     = data.totalEarned,
         gems            = data.gems,
         coreLevel       = data.coreLevel,

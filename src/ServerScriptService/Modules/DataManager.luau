@@ -8,8 +8,9 @@ local STORE = DataStoreService:GetDataStore("GemPowerCoreV2")
 
 local DEFAULT_DATA = {
     credits         = GameConfig.STARTING_CREDITS,
+    gemCurrency     = 0,          -- premium 💎 currency
     totalEarned     = 0,
-    gems            = {},
+    gems            = { Crystite = 1 },   -- spawn with 1 shard to slot immediately
     coreLevel       = 1,
     coreSlots       = {},
     -- Repeatable core upgrades: { upgradeKey = level }

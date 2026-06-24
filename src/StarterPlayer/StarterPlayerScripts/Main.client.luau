@@ -82,22 +82,22 @@ R.UpdateLeaderboard.OnClientEvent:Connect(function(board)
     HUD.UpdateLeaderboard(board)
 end)
 
-local firstExtraction = true
-R.GemExtracted.OnClientEvent:Connect(function(gemType, remaining, yield, extractTime)
-    local text = yield > 1 and ("+" .. yield .. "× " .. gemType) or ("+" .. gemType)
-    HUD.ShowFloatingText(text, Color3.fromRGB(80, 255, 80))
+local firstMine = true
+-- GemExtracted now fires once per completed mine round: (gemType, heldCount, nextMineTime)
+R.GemExtracted.OnClientEvent:Connect(function(gemType, heldCount, nextMineTime)
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local GemTypes = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GemTypes"))
+    local gd = GemTypes[gemType]
+    local displayName = gd and gd.displayName or gemType
+    HUD.ShowFloatingText("+1 " .. displayName, gd and gd.color or Color3.fromRGB(80, 255, 80))
 
-    if firstExtraction then
-        firstExtraction = false
+    if firstMine then
+        firstMine = false
         TutorialManager.OnFirstExtraction()
     end
 
-    if remaining > 0 then
-        NodeFeedback.UpdateRemaining(remaining, extractTime or 1.5)
-    else
-        NodeFeedback.Detach()
-        HUD.ShowNotification(gemType .. " node depleted!")
-    end
+    -- Restart the progress bar for the next round
+    NodeFeedback.OnRoundComplete(nextMineTime or 120)
 end)
 
 R.Notification.OnClientEvent:Connect(function(msg)
@@ -112,32 +112,34 @@ end)
 -- Every part inside Workspace.GemNodes gets a ClickDetector so it shows a hover
 -- cursor and is obviously clickable. Clicking toggles extraction on that node.
 
-local extracting   = false
-local currentNode  = nil
+local mining     = false
+local currentNode = nil
 
 local function onNodeClicked(node)
     if not node:GetAttribute("GemType") then return end
 
-    if not extracting then
-        extracting  = true
+    if not mining then
+        mining      = true
         currentNode = node
-        local gemType   = node:GetAttribute("GemType")
-        local remaining = node:GetAttribute("Remaining") or 0
-        local ok, extractTime = RF.StartExtraction:InvokeServer(node)
+        local gemType = node:GetAttribute("GemType")
+        local ok, mineTime = RF.StartExtraction:InvokeServer(node)
         if ok then
-            NodeFeedback.Attach(node, gemType, remaining, extractTime or 1.5)
-            HUD.ShowNotification("Extracting " .. gemType .. "… click again to stop.")
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local GemTypes = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GemTypes"))
+            local gd = GemTypes[gemType]
+            NodeFeedback.Attach(node, gemType, mineTime or 120)
+            HUD.ShowNotification("Mining " .. (gd and gd.displayName or gemType) .. "… click again to stop.")
         else
-            extracting  = false
+            mining      = false
             currentNode = nil
-            HUD.ShowNotification("Could not start: " .. tostring(extractTime))
+            HUD.ShowNotification("Could not start: " .. tostring(mineTime))
         end
     else
-        extracting  = false
+        mining      = false
         currentNode = nil
         RF.StopExtraction:InvokeServer()
         NodeFeedback.Detach()
-        HUD.ShowNotification("Extraction stopped.")
+        HUD.ShowNotification("Mining stopped.")
     end
 end
 
@@ -168,9 +170,9 @@ if nodesFolder then
         setupNode(part)
         if wiredNodes[part] then wiredCount += 1 end
     end
-    -- Wire up nodes that respawn or are added later
+    -- Wire newly added nodes (e.g. placed by level scripts)
     nodesFolder.ChildAdded:Connect(function(part)
-        task.wait()  -- let attributes replicate
+        task.wait()
         setupNode(part)
     end)
 else

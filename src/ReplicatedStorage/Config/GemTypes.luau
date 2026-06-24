@@ -1,6 +1,6 @@
--- rarityTier (1-6) feeds into the resonance formula:
--- resonance = core.baseMultiplier + gem.rarityTier * coreLevel * RESONANCE_SCALING
--- Higher rarity gems scale MUCH better in higher-tier cores.
+-- rarityTier (1-6) feeds into the resonance formula.
+-- mineTime: seconds it takes to mine 1 shard from a permanent node.
+-- Nodes never deplete; they always accept mining.
 return {
     Crystite = {
         displayName = "Crystite Shard",
@@ -8,8 +8,7 @@ return {
         rarityTier  = 1,
         baseFuel    = 5,
         color       = Color3.fromRGB(100, 200, 255),
-        nodeYield   = 100,
-        extractTime = 1.5,
+        mineTime    = 120,      -- 2 minutes
         tradeValue  = 30,
     },
     Voidstone = {
@@ -18,8 +17,7 @@ return {
         rarityTier  = 2,
         baseFuel    = 20,
         color       = Color3.fromRGB(150, 50, 255),
-        nodeYield   = 60,
-        extractTime = 3,
+        mineTime    = 900,      -- 15 minutes
         tradeValue  = 150,
     },
     Neutronium = {
@@ -28,8 +26,7 @@ return {
         rarityTier  = 3,
         baseFuel    = 80,
         color       = Color3.fromRGB(255, 150, 0),
-        nodeYield   = 30,
-        extractTime = 7,
+        mineTime    = 3600,     -- 1 hour
         tradeValue  = 700,
     },
     SingularityCore = {
@@ -38,8 +35,7 @@ return {
         rarityTier  = 4,
         baseFuel    = 350,
         color       = Color3.fromRGB(255, 50, 50),
-        nodeYield   = 12,
-        extractTime = 15,
+        mineTime    = 14400,    -- 4 hours
         tradeValue  = 4000,
     },
     PrimordialEssence = {
@@ -48,8 +44,7 @@ return {
         rarityTier  = 5,
         baseFuel    = 1500,
         color       = Color3.fromRGB(255, 180, 255),
-        nodeYield   = 5,
-        extractTime = 30,
+        mineTime    = 43200,    -- 12 hours
         tradeValue  = 25000,
     },
     CosmicShard = {
@@ -58,8 +53,7 @@ return {
         rarityTier  = 6,
         baseFuel    = 8000,
         color       = Color3.fromRGB(200, 255, 255),
-        nodeYield   = 2,
-        extractTime = 60,
+        mineTime    = 86400,    -- 24 hours
         tradeValue  = 200000,
     },
 }

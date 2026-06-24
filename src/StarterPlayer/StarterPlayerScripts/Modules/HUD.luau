@@ -3,7 +3,7 @@ local Players       = game:GetService("Players")
 local PotionTypes   = require(game.ReplicatedStorage:WaitForChild("Config"):WaitForChild("PotionTypes"))
 
 local HUD = {}
-local creditsLabel, incomeLabel, leaderboardList, notifLabel, potionBar
+local creditsLabel, incomeLabel, gemCurrLabel, leaderboardList, notifLabel, potionBar
 
 local function fmt(n)
     n = math.floor(n)
@@ -31,9 +31,6 @@ local function makeFrame(parent, props)
     f.Parent = parent; return f
 end
 
--- Active potion timers (potionType -> label reference)
-local potionLabels = {}
-
 function HUD.Init(playerGui, initData)
     local gui = Instance.new("ScreenGui")
     gui.Name = "HUD"; gui.ResetOnSpawn = false
@@ -47,7 +44,7 @@ function HUD.Init(playerGui, initData)
         BackgroundTransparency = 0.25, BorderSizePixel = 0,
     })
 
-    -- Credits box
+    -- ── Credits box (💰 basic currency) ─────────────────────────────────────
     local creditBox = makeFrame(topBar, {
         Size = UDim2.new(0, 220, 1, -10), Position = UDim2.new(0, 8, 0, 5),
         BackgroundColor3 = Color3.fromRGB(18, 18, 36), BorderSizePixel = 0,
@@ -56,7 +53,7 @@ function HUD.Init(playerGui, initData)
 
     makeLabel(creditBox, {
         Size = UDim2.new(0, 28, 1, 0), Position = UDim2.new(0, 4, 0, 0),
-        BackgroundTransparency = 1, Text = "💎", TextScaled = true,
+        BackgroundTransparency = 1, Text = "💰", TextScaled = true,
     })
 
     creditsLabel = makeLabel(creditBox, {
@@ -75,19 +72,27 @@ function HUD.Init(playerGui, initData)
         TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left,
     })
 
-    -- Active potions bar (below credits, left side)
-    potionBar = makeFrame(gui, {
-        Name = "PotionBar",
-        Size = UDim2.new(0, 0, 0, 36),  -- width grows with pills
-        Position = UDim2.new(0, 8, 0, 62),
-        BackgroundTransparency = 1, BorderSizePixel = 0,
+    -- ── Premium currency box (💎 gem diamonds) ──────────────────────────────
+    local gemBox = makeFrame(topBar, {
+        Size = UDim2.new(0, 130, 1, -10), Position = UDim2.new(0, 236, 0, 5),
+        BackgroundColor3 = Color3.fromRGB(20, 10, 40), BorderSizePixel = 0,
     })
-    local potionLayout = Instance.new("UIListLayout")
-    potionLayout.FillDirection = Enum.FillDirection.Horizontal
-    potionLayout.Padding = UDim.new(0, 4)
-    potionLayout.Parent = potionBar
+    corner(gemBox, 6)
 
-    -- Leaderboard
+    makeLabel(gemBox, {
+        Size = UDim2.new(0, 28, 1, 0), Position = UDim2.new(0, 4, 0, 0),
+        BackgroundTransparency = 1, Text = "💎", TextScaled = true,
+    })
+
+    gemCurrLabel = makeLabel(gemBox, {
+        Name = "GemCurrLabel",
+        Size = UDim2.new(1, -36, 1, 0), Position = UDim2.new(0, 32, 0, 0),
+        BackgroundTransparency = 1, Text = fmt(initData.gemCurrency or 0),
+        TextColor3 = Color3.fromRGB(200, 150, 255), Font = Enum.Font.GothamBold,
+        TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left,
+    })
+
+    -- ── Leaderboard ──────────────────────────────────────────────────────────
     local lbPanel = makeFrame(gui, {
         Size = UDim2.new(0, 234, 0, 298),
         Position = UDim2.new(1, -242, 0, 64),
@@ -122,7 +127,7 @@ function HUD.Init(playerGui, initData)
     ll.Padding = UDim.new(0, 3)
     ll.Parent = lbScroll
 
-    -- Notification
+    -- ── Notification (center, just below top bar) ─────────────────────────
     notifLabel = makeLabel(gui, {
         Size = UDim2.new(0, 440, 0, 44),
         Position = UDim2.new(0.5, -220, 0, 64),
@@ -134,15 +139,30 @@ function HUD.Init(playerGui, initData)
     })
     corner(notifLabel, 8)
 
-    -- Show initial active potions
+    -- ── Active potions bar (center-bottom, always visible) ───────────────
+    -- Place above the very bottom so it's never behind side-panel buttons.
+    potionBar = makeFrame(gui, {
+        Name = "PotionBar",
+        Size = UDim2.new(0, 0, 0, 40),
+        Position = UDim2.new(0.5, 0, 1, -56),
+        AnchorPoint = Vector2.new(0.5, 0),
+        BackgroundTransparency = 1, BorderSizePixel = 0,
+    })
+    local potionLayout = Instance.new("UIListLayout")
+    potionLayout.FillDirection = Enum.FillDirection.Horizontal
+    potionLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    potionLayout.Padding = UDim.new(0, 6)
+    potionLayout.Parent = potionBar
+
     if initData.activePotions then
         HUD.UpdatePotions(initData.activePotions)
     end
 end
 
 function HUD.Update(hudData)
-    if hudData.credits   and creditsLabel then creditsLabel.Text = fmt(hudData.credits) end
-    if hudData.incomeRate and incomeLabel  then incomeLabel.Text  = "+" .. fmt(hudData.incomeRate) .. "/s" end
+    if hudData.credits     and creditsLabel  then creditsLabel.Text  = fmt(hudData.credits) end
+    if hudData.incomeRate  and incomeLabel   then incomeLabel.Text   = "+" .. fmt(hudData.incomeRate) .. "/s" end
+    if hudData.gemCurrency and gemCurrLabel  then gemCurrLabel.Text  = fmt(hudData.gemCurrency) end
 end
 
 function HUD.UpdateLeaderboard(board)
@@ -183,7 +203,7 @@ function HUD.UpdateLeaderboard(board)
         makeLabel(row, {
             Size = UDim2.new(0.48, 0, 0.55, 0), Position = UDim2.new(0.52, 0, 0, 2),
             BackgroundTransparency = 1,
-            Text = fmt(entry.totalEarned) .. " 💳",
+            Text = fmt(entry.totalEarned) .. " 💰",
             TextColor3 = Color3.fromRGB(255, 220, 50),
             Font = Enum.Font.GothamBold, TextScaled = true,
             TextXAlignment = Enum.TextXAlignment.Right,
@@ -199,46 +219,53 @@ function HUD.UpdateLeaderboard(board)
     end
 end
 
--- activePotions: { potionType -> secondsRemaining }
 function HUD.UpdatePotions(activePotions)
     if not potionBar then return end
     for _, c in ipairs(potionBar:GetChildren()) do
         if c:IsA("Frame") then c:Destroy() end
     end
-    potionLabels = {}
 
     for potionType, secondsLeft in pairs(activePotions) do
         local pd = PotionTypes[potionType]
         if not pd then continue end
 
         local pill = Instance.new("Frame")
-        pill.Size = UDim2.new(0, 120, 1, 0)
+        pill.Size = UDim2.new(0, 144, 1, 0)
         pill.BackgroundColor3 = pd.color
-        pill.BackgroundTransparency = 0.25
+        pill.BackgroundTransparency = 0.2
         pill.BorderSizePixel = 0
         pill.Parent = potionBar
-        corner(pill, 6)
+        corner(pill, 8)
 
         local lbl = makeLabel(pill, {
-            Size = UDim2.new(1, -4, 1, 0), Position = UDim2.new(0, 2, 0, 0),
+            Size = UDim2.new(1, -6, 1, 0), Position = UDim2.new(0, 3, 0, 0),
             BackgroundTransparency = 1,
-            Text = pd.icon .. " " .. pd.displayName .. " " .. math.ceil(secondsLeft) .. "s",
+            Text = pd.icon .. " " .. pd.displayName,
             TextColor3 = Color3.fromRGB(255, 255, 255),
+            Font = Enum.Font.GothamBold, TextScaled = true,
+        })
+
+        -- Countdown ticker below the name
+        local timeLbl = makeLabel(pill, {
+            Size = UDim2.new(1, 0, 0.42, 0), Position = UDim2.new(0, 0, 0.58, 0),
+            BackgroundTransparency = 1,
+            Text = math.ceil(secondsLeft) .. "s",
+            TextColor3 = Color3.fromRGB(255, 255, 200),
             Font = Enum.Font.Gotham, TextScaled = true,
         })
-        potionLabels[potionType] = lbl
+        lbl.Size = UDim2.new(1, -6, 0.55, 0)
 
-        -- Count down locally
         local remaining = secondsLeft
         task.spawn(function()
             while remaining > 0 do
                 task.wait(1)
                 remaining -= 1
-                if lbl and lbl.Parent then
-                    lbl.Text = pd.icon .. " " .. pd.displayName .. " " .. math.ceil(remaining) .. "s"
-                    if remaining <= 0 then
-                        pill:Destroy()
-                    end
+                if timeLbl and timeLbl.Parent then
+                    local mins = math.floor(remaining / 60)
+                    timeLbl.Text = mins > 0
+                        and (mins .. "m " .. (remaining % 60) .. "s")
+                        or  (math.ceil(remaining) .. "s")
+                    if remaining <= 0 then pill:Destroy() end
                 end
             end
         end)
@@ -261,7 +288,7 @@ function HUD.ShowFloatingText(text, color)
     if not hrp then return end
 
     local bb = Instance.new("BillboardGui")
-    bb.Size = UDim2.new(0, 110, 0, 34)
+    bb.Size = UDim2.new(0, 140, 0, 38)
     bb.StudsOffset = Vector3.new(0, 4, 0)
     bb.AlwaysOnTop = true
     bb.Adornee = hrp
@@ -274,6 +301,7 @@ function HUD.ShowFloatingText(text, color)
     lbl.TextColor3 = color or Color3.fromRGB(80, 255, 80)
     lbl.Font = Enum.Font.GothamBold
     lbl.TextScaled = true
+    lbl.TextStrokeTransparency = 0.3
     lbl.Parent = bb
 
     TweenService:Create(bb, TweenInfo.new(1.5), { StudsOffset = Vector3.new(0, 9, 0) }):Play()
