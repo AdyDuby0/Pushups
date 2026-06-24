@@ -15,6 +15,15 @@ return {
     -- Minimum extraction time after drill/potion reductions (seconds)
     MIN_EXTRACT_TIME    = 0.4,
 
+    -- Repeatable direct upgrades to the Power Core. Cheap, frequent, additive
+    -- income multipliers for a fast-paced progression loop.
+    -- next cost = floor(baseCost * growth ^ currentLevel)
+    -- income is multiplied by (1 + sum(level * bonusPerLevel))
+    CORE_UPGRADES = {
+        { key = "overclock", name = "Overclock",   icon = "⚡", bonusPerLevel = 0.05, baseCost = 150,  growth = 1.15 },
+        { key = "surge",     name = "Power Surge",  icon = "🔋", bonusPerLevel = 0.15, baseCost = 2000, growth = 1.27 },
+    },
+
     GAMEPASSES = {
         DOUBLE_INCOME   = 0,
         AUTO_EXTRACT    = 0,

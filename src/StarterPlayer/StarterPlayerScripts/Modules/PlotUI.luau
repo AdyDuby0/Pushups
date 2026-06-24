@@ -8,9 +8,12 @@ local RF_ref
 local callbacks_ref
 local data = { coreLevel = 1, coreSlots = {}, gems = {}, credits = 0 }
 local slotsGrid, gemsScroll, coreTitle, coreMult, upgradeBtn
+local upgradesFrame
+local upgradeInfo = {}   -- array of { key, name, icon, level, bonusPerLevel, nextCost }
+local upgradeRows = {}   -- key -> { buyBtn, entry }
 
--- Forward declarations so the two refresh functions can call each other
-local refreshSlots, refreshGems
+-- Forward declarations so functions can reference each other
+local refreshSlots, refreshGems, refreshUpgrades, updateUpgradeAffordability
 
 local function fmt(n)
     n = math.floor(n)
@@ -175,6 +178,82 @@ function refreshGems()
     end
 end
 
+function updateUpgradeAffordability()
+    for _, r in pairs(upgradeRows) do
+        local afford = data.credits >= r.entry.nextCost
+        r.buyBtn.BackgroundColor3 = afford and Color3.fromRGB(40, 140, 70) or Color3.fromRGB(55, 55, 75)
+        r.buyBtn.AutoButtonColor  = afford
+    end
+end
+
+function refreshUpgrades()
+    if not upgradesFrame then return end
+    for _, c in ipairs(upgradesFrame:GetChildren()) do
+        if c:IsA("Frame") then c:Destroy() end
+    end
+    upgradeRows = {}
+
+    for _, entry in ipairs(upgradeInfo) do
+        local row = Instance.new("Frame")
+        row.Size                 = UDim2.new(1, -8, 0, 46)
+        row.BackgroundColor3     = Color3.fromRGB(16, 22, 44)
+        row.BackgroundTransparency = 0.2
+        row.BorderSizePixel      = 0
+        row.Parent               = upgradesFrame
+        corner(row, 6)
+
+        local nameLbl = Instance.new("TextLabel")
+        nameLbl.Size                 = UDim2.new(0.58, -6, 0.55, 0)
+        nameLbl.Position             = UDim2.new(0, 8, 0, 2)
+        nameLbl.BackgroundTransparency = 1
+        nameLbl.Text                 = entry.icon .. " " .. entry.name .. "  Lv." .. entry.level
+        nameLbl.TextColor3           = Color3.fromRGB(180, 220, 255)
+        nameLbl.Font                 = Enum.Font.GothamBold
+        nameLbl.TextScaled           = true
+        nameLbl.TextXAlignment       = Enum.TextXAlignment.Left
+        nameLbl.Parent               = row
+
+        local bonusLbl = Instance.new("TextLabel")
+        bonusLbl.Size                 = UDim2.new(0.58, -6, 0.42, 0)
+        bonusLbl.Position             = UDim2.new(0, 8, 0.55, 0)
+        bonusLbl.BackgroundTransparency = 1
+        bonusLbl.Text                 = string.format("+%d%% per lvl  •  now +%d%%",
+            math.floor(entry.bonusPerLevel * 100 + 0.5),
+            math.floor(entry.level * entry.bonusPerLevel * 100 + 0.5))
+        bonusLbl.TextColor3           = Color3.fromRGB(120, 210, 130)
+        bonusLbl.Font                 = Enum.Font.Gotham
+        bonusLbl.TextScaled           = true
+        bonusLbl.TextXAlignment       = Enum.TextXAlignment.Left
+        bonusLbl.Parent               = row
+
+        local buyBtn = Instance.new("TextButton")
+        buyBtn.Size              = UDim2.new(0.4, -8, 0.78, 0)
+        buyBtn.Position          = UDim2.new(0.6, 0, 0.11, 0)
+        buyBtn.BorderSizePixel   = 0
+        buyBtn.Text              = fmt(entry.nextCost) .. " CR"
+        buyBtn.TextColor3        = Color3.fromRGB(255, 255, 255)
+        buyBtn.Font              = Enum.Font.GothamBold
+        buyBtn.TextScaled        = true
+        buyBtn.Parent            = row
+        corner(buyBtn, 4)
+
+        local capKey = entry.key
+        buyBtn.MouseButton1Click:Connect(function()
+            local ok, result = RF_ref.BuyCoreUpgrade:InvokeServer(capKey)
+            if ok and type(result) == "table" then
+                entry.level    = result.level
+                entry.nextCost = result.nextCost
+                data.credits   = result.credits
+                refreshUpgrades()
+            end
+        end)
+
+        upgradeRows[entry.key] = { buyBtn = buyBtn, entry = entry }
+    end
+
+    updateUpgradeAffordability()
+end
+
 function PlotUI.Init(playerGui, initData, RF, callbacks)
     RF_ref = RF
     callbacks_ref = callbacks
@@ -182,6 +261,7 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
     data.coreSlots = initData.coreSlots
     data.gems      = initData.gems
     data.credits   = initData.credits
+    upgradeInfo    = initData.coreUpgrades or {}
 
     local gui = Instance.new("ScreenGui")
     gui.Name           = "PlotUI"
@@ -205,7 +285,7 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
     -- Panel
     local panel = Instance.new("Frame")
     panel.Name            = "CorePanel"
-    panel.Size            = UDim2.new(0, 360, 0, 520)
+    panel.Size            = UDim2.new(0, 360, 0, 604)
     panel.Position        = UDim2.new(0, 8, 0, 110)
     panel.BackgroundColor3 = Color3.fromRGB(8, 8, 22)
     panel.BackgroundTransparency = 0.08
@@ -281,7 +361,7 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
 
     -- Gems scrolling frame
     gemsScroll = Instance.new("ScrollingFrame")
-    gemsScroll.Size              = UDim2.new(1, -8, 0, 164)
+    gemsScroll.Size              = UDim2.new(1, -8, 0, 108)
     gemsScroll.Position          = UDim2.new(0, 4, 0, 294)
     gemsScroll.BackgroundTransparency = 1
     gemsScroll.BorderSizePixel   = 0
@@ -293,6 +373,31 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
     local gemsList = Instance.new("UIListLayout")
     gemsList.Padding   = UDim.new(0, 4)
     gemsList.Parent    = gemsScroll
+
+    -- Core upgrades label
+    local upgLbl = Instance.new("TextLabel")
+    upgLbl.Size                 = UDim2.new(1, -8, 0, 20)
+    upgLbl.Position             = UDim2.new(0, 8, 0, 408)
+    upgLbl.BackgroundTransparency = 1
+    upgLbl.Text                 = "⚡ CORE UPGRADES"
+    upgLbl.TextColor3           = Color3.fromRGB(255, 210, 90)
+    upgLbl.Font                 = Enum.Font.GothamBold
+    upgLbl.TextScaled           = true
+    upgLbl.TextXAlignment       = Enum.TextXAlignment.Left
+    upgLbl.Parent               = panel
+
+    -- Core upgrades container (rows stacked vertically)
+    upgradesFrame = Instance.new("Frame")
+    upgradesFrame.Name            = "UpgradesFrame"
+    upgradesFrame.Size            = UDim2.new(1, -8, 0, 100)
+    upgradesFrame.Position        = UDim2.new(0, 4, 0, 430)
+    upgradesFrame.BackgroundTransparency = 1
+    upgradesFrame.BorderSizePixel = 0
+    upgradesFrame.Parent          = panel
+
+    local upgLayout = Instance.new("UIListLayout")
+    upgLayout.Padding   = UDim.new(0, 4)
+    upgLayout.Parent    = upgradesFrame
 
     -- Upgrade button
     upgradeBtn = Instance.new("TextButton")
@@ -330,16 +435,23 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
             Panels.CloseOthers("PowerCore")
             refreshSlots()
             refreshGems()
+            refreshUpgrades()
             if callbacks_ref and callbacks_ref.onCoreOpened then callbacks_ref.onCoreOpened() end
         end
     end)
 
     refreshSlots()
+    refreshUpgrades()
 end
 
 function PlotUI.UpdateGems(gems)
     data.gems = gems
     refreshGems()
+end
+
+function PlotUI.UpdateCredits(credits)
+    data.credits = credits
+    updateUpgradeAffordability()
 end
 
 return PlotUI

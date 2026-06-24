@@ -46,6 +46,7 @@ local RFn = {
     BuyListing      = fn("BuyListing"),
     StartExtraction = fn("StartExtraction"),
     StopExtraction  = fn("StopExtraction"),
+    BuyCoreUpgrade  = fn("BuyCoreUpgrade"),
     CraftGear       = fn("CraftGear"),
     EquipGear       = fn("EquipGear"),
     UnequipGear     = fn("UnequipGear"),
@@ -82,6 +83,7 @@ RFn.GetInitialData.OnServerInvoke = function(player)
         stats           = data.stats,
         incomeRate      = PowerCoreManager.GetIncomeRate(player),
         maxSlots        = PowerCoreManager.GetMaxSlots(player),
+        coreUpgrades    = PowerCoreManager.GetCoreUpgradeInfo(player),
         listings        = MarketManager.GetAll(),
     }
 end
@@ -118,6 +120,17 @@ end
 
 RFn.StopExtraction.OnServerInvoke = function(p)
     GemManager.StopExtraction(p); return true
+end
+
+RFn.BuyCoreUpgrade.OnServerInvoke = function(p, key)
+    local ok, result = PowerCoreManager.BuyCoreUpgrade(p, key)
+    if ok then
+        R.UpdateHUD:FireClient(p, {
+            credits    = result.credits,
+            incomeRate = result.incomeRate,
+        })
+    end
+    return ok, result
 end
 
 RFn.CraftGear.OnServerInvoke = function(p, category, tier)

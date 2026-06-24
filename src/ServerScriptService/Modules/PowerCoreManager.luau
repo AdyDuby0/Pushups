@@ -76,6 +76,14 @@ function PowerCoreManager.GetIncomeRate(player)
     end
     base = base * (1 + potionBonus)
 
+    -- Repeatable core upgrades (overclock / surge)
+    local upgradeBonus = 0
+    for _, cfg in ipairs(GameConfig.CORE_UPGRADES) do
+        local level = (data.coreUpgrades and data.coreUpgrades[cfg.key]) or 0
+        upgradeBonus += level * cfg.bonusPerLevel
+    end
+    base = base * (1 + upgradeBonus)
+
     -- Gamepasses
     if MonetizationManager then
         if MonetizationManager.HasDoubleIncome(player) then base *= 2 end
@@ -131,6 +139,52 @@ function PowerCoreManager.UpgradeCore(player)
     data.credits   -= coreData.upgradeCost
     data.coreLevel += 1
     return true
+end
+
+-- Returns the client-facing list of repeatable core upgrades with live levels/costs
+function PowerCoreManager.GetCoreUpgradeInfo(player)
+    local data = DataManager.Get(player)
+    local info = {}
+    if not data then return info end
+    for _, cfg in ipairs(GameConfig.CORE_UPGRADES) do
+        local level = (data.coreUpgrades and data.coreUpgrades[cfg.key]) or 0
+        table.insert(info, {
+            key           = cfg.key,
+            name          = cfg.name,
+            icon          = cfg.icon,
+            level         = level,
+            bonusPerLevel = cfg.bonusPerLevel,
+            nextCost      = math.floor(cfg.baseCost * cfg.growth ^ level),
+        })
+    end
+    return info
+end
+
+function PowerCoreManager.BuyCoreUpgrade(player, key)
+    local data = DataManager.Get(player)
+    if not data then return false, "No data" end
+
+    local cfg
+    for _, c in ipairs(GameConfig.CORE_UPGRADES) do
+        if c.key == key then cfg = c break end
+    end
+    if not cfg then return false, "Unknown upgrade" end
+
+    data.coreUpgrades = data.coreUpgrades or {}
+    local level = data.coreUpgrades[key] or 0
+    local cost  = math.floor(cfg.baseCost * cfg.growth ^ level)
+    if data.credits < cost then return false, "Not enough credits" end
+
+    data.credits          -= cost
+    data.coreUpgrades[key]  = level + 1
+
+    return true, {
+        key        = key,
+        level      = level + 1,
+        nextCost   = math.floor(cfg.baseCost * cfg.growth ^ (level + 1)),
+        credits    = data.credits,
+        incomeRate = PowerCoreManager.GetIncomeRate(player),
+    }
 end
 
 function PowerCoreManager.StartIncomeLoop()

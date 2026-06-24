@@ -27,6 +27,7 @@ local RF = {
     BuyListing      = RemotesFolder:WaitForChild("BuyListing"),
     StartExtraction = RemotesFolder:WaitForChild("StartExtraction"),
     StopExtraction  = RemotesFolder:WaitForChild("StopExtraction"),
+    BuyCoreUpgrade  = RemotesFolder:WaitForChild("BuyCoreUpgrade"),
     CraftGear       = RemotesFolder:WaitForChild("CraftGear"),
     EquipGear       = RemotesFolder:WaitForChild("EquipGear"),
     UnequipGear     = RemotesFolder:WaitForChild("UnequipGear"),
@@ -63,6 +64,7 @@ R.UpdateHUD.OnClientEvent:Connect(function(hudData)
     HUD.Update(hudData)
     if hudData.credits then
         CraftingUI.UpdateCredits(hudData.credits)
+        PlotUI.UpdateCredits(hudData.credits)
     end
 end)
 
