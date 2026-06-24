@@ -138,15 +138,21 @@ local function onNodeClicked(node)
     end
 end
 
+local wiredNodes = {}  -- part -> true, so we wire each node's click exactly once
+
 local function setupNode(part)
     if not part:IsA("BasePart") then return end
     if not part:GetAttribute("GemType") then return end
-    if part:FindFirstChildOfClass("ClickDetector") then return end
+    if wiredNodes[part] then return end
+    wiredNodes[part] = true
 
-    local cd = Instance.new("ClickDetector")
-    cd.MaxActivationDistance = 40
-    cd.CursorIcon = ""
-    cd.Parent = part
+    -- Reuse a ClickDetector if one already exists (e.g. added by hand); else create it
+    local cd = part:FindFirstChildOfClass("ClickDetector")
+    if not cd then
+        cd = Instance.new("ClickDetector")
+        cd.MaxActivationDistance = 40
+        cd.Parent = part
+    end
     cd.MouseClick:Connect(function()
         onNodeClicked(part)
     end)
