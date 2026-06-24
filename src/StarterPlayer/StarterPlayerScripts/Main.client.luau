@@ -35,11 +35,13 @@ local RF = {
     UsePotion       = RemotesFolder:WaitForChild("UsePotion"),
 }
 
-local Modules     = script.Parent:WaitForChild("Modules")
-local HUD         = require(Modules:WaitForChild("HUD"))
-local PlotUI      = require(Modules:WaitForChild("PlotUI"))
-local MarketUI    = require(Modules:WaitForChild("MarketUI"))
-local CraftingUI  = require(Modules:WaitForChild("CraftingUI"))
+local Modules          = script.Parent:WaitForChild("Modules")
+local HUD              = require(Modules:WaitForChild("HUD"))
+local PlotUI           = require(Modules:WaitForChild("PlotUI"))
+local MarketUI         = require(Modules:WaitForChild("MarketUI"))
+local CraftingUI       = require(Modules:WaitForChild("CraftingUI"))
+local TutorialManager  = require(Modules:WaitForChild("TutorialManager"))
+local NodeFeedback     = require(Modules:WaitForChild("NodeFeedback"))
 
 if not player.Character then player.CharacterAdded:Wait() end
 task.wait(2)
@@ -48,9 +50,13 @@ local initData = RF.GetInitialData:InvokeServer()
 assert(initData, "[GemPowerCore] Failed to load initial data")
 
 HUD.Init(playerGui, initData)
-PlotUI.Init(playerGui, initData, RF)
+PlotUI.Init(playerGui, initData, RF, {
+    onCoreOpened = function() TutorialManager.OnCoreOpened() end,
+    onFirstSlot  = function() TutorialManager.OnFirstSlot() end,
+})
 MarketUI.Init(playerGui, initData, RF)
 CraftingUI.Init(playerGui, initData, RF)
+TutorialManager.Start(playerGui, initData)
 
 -- ── Server event hooks ────────────────────────────────────────────────────────
 
@@ -75,9 +81,22 @@ R.UpdateLeaderboard:Connect(function(board)
     HUD.UpdateLeaderboard(board)
 end)
 
-R.GemExtracted:Connect(function(gemType, remaining, yield)
+local firstExtraction = true
+R.GemExtracted:Connect(function(gemType, remaining, yield, extractTime)
     local text = yield > 1 and ("+" .. yield .. "× " .. gemType) or ("+" .. gemType)
     HUD.ShowFloatingText(text, Color3.fromRGB(80, 255, 80))
+
+    if firstExtraction then
+        firstExtraction = false
+        TutorialManager.OnFirstExtraction()
+    end
+
+    if remaining > 0 then
+        NodeFeedback.UpdateRemaining(remaining, extractTime or 1.5)
+    else
+        NodeFeedback.Detach()
+        HUD.ShowNotification(gemType .. " node depleted!")
+    end
 end)
 
 R.Notification:Connect(function(msg)
@@ -105,12 +124,19 @@ UserInputService.InputBegan:Connect(function(input, processed)
         local node = result.Instance
         if not extracting then
             extracting = true
-            local gemType = node:GetAttribute("GemType")
-            RF.StartExtraction:InvokeServer(node)
-            HUD.ShowNotification("Extracting " .. gemType .. "… click again to stop.")
+            local gemType    = node:GetAttribute("GemType")
+            local remaining  = node:GetAttribute("Remaining") or 0
+            local ok, extractTime = RF.StartExtraction:InvokeServer(node)
+            if ok then
+                NodeFeedback.Attach(node, gemType, remaining, extractTime or 1.5)
+                HUD.ShowNotification("Extracting " .. gemType .. "… click again to stop.")
+            else
+                extracting = false
+            end
         else
             extracting = false
             RF.StopExtraction:InvokeServer()
+            NodeFeedback.Detach()
             HUD.ShowNotification("Extraction stopped.")
         end
     end

@@ -28,7 +28,7 @@ local function refreshSlots()
 
     local coreData = CoreTypes[data.coreLevel]
     if coreTitle then coreTitle.Text = "⚡ " .. coreData.name .. "  (Lv." .. data.coreLevel .. ")" end
-    if coreMult  then coreMult.Text  = "Multiplier  ×" .. coreData.multiplier end
+    if coreMult  then coreMult.Text  = "Base multiplier  ×" .. coreData.baseMultiplier end
     if upgradeBtn then
         if coreData.upgradeCost then
             upgradeBtn.Text = "Upgrade → " .. fmt(coreData.upgradeCost) .. " CR"
@@ -163,13 +163,14 @@ local function refreshGems()
                     if data.gems[captG] <= 0 then data.gems[captG] = nil end
                     refreshSlots()
                     refreshGems()
+                    if callbacks and callbacks.onFirstSlot then callbacks.onFirstSlot() end
                 end
             end)
         end
     end
 end
 
-function PlotUI.Init(playerGui, initData, RF)
+function PlotUI.Init(playerGui, initData, RF, callbacks)
     RF_ref = RF
     data.coreLevel = initData.coreLevel
     data.coreSlots = initData.coreSlots
@@ -318,6 +319,7 @@ function PlotUI.Init(playerGui, initData, RF)
         if open then
             refreshSlots()
             refreshGems()
+            if callbacks and callbacks.onCoreOpened then callbacks.onCoreOpened() end
         end
     end)
 

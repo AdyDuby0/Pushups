@@ -64,6 +64,9 @@ function GemManager.StartExtraction(player, node)
 
     local gemData = GemTypes[gemType]
 
+    local data0      = DataManager.Get(player)
+    local initWait   = effectiveExtractTime(data0, gemData.extractTime)
+
     local thread = task.spawn(function()
         while true do
             local data = DataManager.Get(player)
@@ -85,7 +88,8 @@ function GemManager.StartExtraction(player, node)
             data = DataManager.Get(player)
             if not data then return end
 
-            local yield = gemsPerTick(data)
+            local yield    = gemsPerTick(data)
+            local nextWait = effectiveExtractTime(data, gemData.extractTime)
             data.gems[gemType]          = (data.gems[gemType] or 0) + yield
             data.stats.gemsCollected    += yield
 
@@ -94,7 +98,7 @@ function GemManager.StartExtraction(player, node)
 
             if Remotes then
                 Remotes.UpdateInventory:FireClient(player, data.gems)
-                Remotes.GemExtracted:FireClient(player, gemType, remaining, yield)
+                Remotes.GemExtracted:FireClient(player, gemType, remaining, yield, nextWait)
             end
 
             if remaining <= 0 then
@@ -110,7 +114,7 @@ function GemManager.StartExtraction(player, node)
     end)
 
     extractions[player.UserId] = { node = node, thread = thread }
-    return true
+    return true, initWait
 end
 
 function GemManager.StopExtraction(player)
