@@ -177,4 +177,50 @@ else
     warn("[GemPowerCore] Workspace.GemNodes folder not found — gem nodes won't be clickable.")
 end
 
+-- ── Physical Power Core proximity ─────────────────────────────────────────────
+-- The server places a glowing core on your plot (workspace.PowerCores). When you
+-- walk up to YOUR core the Power Core menu opens; it closes when you walk away.
+-- The toggle button still works as a fallback.
+
+task.spawn(function()
+    local myCore
+    local wasInRange = false
+    local OPEN_DIST, CLOSE_DIST = 14, 20
+
+    while true do
+        task.wait(0.2)
+        local char = player.Character
+        local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            -- (re)locate the core tagged with our UserId
+            if not (myCore and myCore.Parent) then
+                myCore = nil
+                local folder = workspace:FindFirstChild("PowerCores")
+                if folder then
+                    for _, m in ipairs(folder:GetChildren()) do
+                        local c = m:FindFirstChild("PowerCore")
+                        if c and c:GetAttribute("OwnerUserId") == player.UserId then
+                            myCore = c
+                            break
+                        end
+                    end
+                end
+            end
+
+            if myCore then
+                local dist = (hrp.Position - myCore.Position).Magnitude
+                if not wasInRange and dist < OPEN_DIST then
+                    wasInRange = true
+                    PlotUI.Open()
+                elseif wasInRange and dist > CLOSE_DIST then
+                    wasInRange = false
+                    PlotUI.Close()
+                end
+            else
+                wasInRange = false
+            end
+        end
+    end
+end)
+
 print("[GemPowerCore] Client ready. Wired " .. wiredCount .. " gem node(s).")

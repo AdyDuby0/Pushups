@@ -7,6 +7,8 @@ local PlotUI = {}
 local RF_ref
 local callbacks_ref
 local data = { coreLevel = 1, coreSlots = {}, gems = {}, credits = 0 }
+local panelRef
+local isOpen = false
 local slotsGrid, gemsScroll, coreTitle, coreMult, upgradeBtn
 local upgradesFrame
 local upgradeInfo = {}   -- array of { key, name, icon, level, bonusPerLevel, nextCost }
@@ -423,25 +425,39 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
     end)
 
     -- Toggle
-    local open = false
+    panelRef = panel
     Panels.Register("PowerCore", function()
-        open = false
+        isOpen = false
         panel.Visible = false
     end)
     toggleBtn.MouseButton1Click:Connect(function()
-        open = not open
-        panel.Visible = open
-        if open then
-            Panels.CloseOthers("PowerCore")
-            refreshSlots()
-            refreshGems()
-            refreshUpgrades()
-            if callbacks_ref and callbacks_ref.onCoreOpened then callbacks_ref.onCoreOpened() end
-        end
+        if isOpen then PlotUI.Close() else PlotUI.Open() end
     end)
 
     refreshSlots()
     refreshUpgrades()
+end
+
+-- Open/Close are public so the physical core's proximity loop can drive the panel.
+function PlotUI.Open()
+    if not panelRef then return end
+    isOpen = true
+    panelRef.Visible = true
+    Panels.CloseOthers("PowerCore")
+    refreshSlots()
+    refreshGems()
+    refreshUpgrades()
+    if callbacks_ref and callbacks_ref.onCoreOpened then callbacks_ref.onCoreOpened() end
+end
+
+function PlotUI.Close()
+    if not panelRef then return end
+    isOpen = false
+    panelRef.Visible = false
+end
+
+function PlotUI.IsOpen()
+    return isOpen
 end
 
 function PlotUI.UpdateGems(gems)

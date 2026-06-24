@@ -12,6 +12,7 @@ local MarketManager       = require(Mods:WaitForChild("MarketManager"))
 local GearManager         = require(Mods:WaitForChild("GearManager"))
 local PotionManager       = require(Mods:WaitForChild("PotionManager"))
 local MonetizationManager = require(Mods:WaitForChild("MonetizationManager"))
+local PowerCoreModel      = require(Mods:WaitForChild("PowerCoreModel"))
 local GameConfig          = require(ReplicatedStorage.Config.GameConfig)
 
 -- ── Remotes ───────────────────────────────────────────────────────────────────
@@ -64,6 +65,7 @@ MarketManager.Init(DataManager, R)
 GearManager.Init(DataManager)
 PotionManager.Init(DataManager)
 MonetizationManager.Init(DataManager)
+PowerCoreModel.StartAnimation()
 
 -- ── Remote handlers ───────────────────────────────────────────────────────────
 
@@ -190,6 +192,9 @@ Players.PlayerAdded:Connect(function(player)
     player.CharacterAdded:Connect(function()
         task.wait(1)
         local plot, idx = PlotManager.Assign(player)
+        if plot then
+            PowerCoreModel.Spawn(player, plot)
+        end
         local msg = plot
             and "Assigned to Plot " .. idx .. ". Head to a gem node and click to extract."
             or  "All plots taken. Wait for a player to leave."
@@ -199,6 +204,7 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
     GemManager.StopExtraction(player)
+    PowerCoreModel.Despawn(player)
     PlotManager.Release(player)
     DataManager.Unload(player)
 end)
