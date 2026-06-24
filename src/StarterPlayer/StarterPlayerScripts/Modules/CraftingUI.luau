@@ -14,12 +14,21 @@ local gearPanel, potionPanel
 local gearListFrame, potionListFrame
 
 local GEAR_CATEGORIES = { "Conductor", "Amplifier", "Capacitor", "Drill" }
-local GEAR_DESCS = {
-    Conductor = "Boosts total income by a %.",
-    Amplifier = "Boosts base fuel of all gems by a %.",
-    Capacitor = "Adds extra gem slots to your core.",
-    Drill     = "Reduces extraction time per gem.",
-}
+
+local function gearEffectText(category, tier)
+    local gd = GearTypes[category][tier]
+    if category == "Conductor" then
+        return string.format("+%d%% total income", math.round(gd.incomeBonus * 100))
+    elseif category == "Amplifier" then
+        return string.format("+%d%% gem fuel", math.round(gd.fuelBonus * 100))
+    elseif category == "Capacitor" then
+        local s = gd.extraSlots > 1 and "slots" or "slot"
+        return string.format("+%d extra gem %s", gd.extraSlots, s)
+    elseif category == "Drill" then
+        return string.format("-%d%% extraction time", math.round(gd.timeReduction * 100))
+    end
+    return ""
+end
 
 local function fmt(n)
     n = math.floor(n)
@@ -89,7 +98,7 @@ local function makeGearRow(category, tier)
         or (craftable and "🔨 " or "🔒 ")
 
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, -4, 0, 52)
+    row.Size = UDim2.new(1, -4, 0, 72)
     row.BackgroundColor3 = isEquipped and Color3.fromRGB(40, 60, 20)
         or (craftable and Color3.fromRGB(22, 34, 58) or Color3.fromRGB(18, 18, 35))
     row.BackgroundTransparency = 0.25
@@ -98,7 +107,7 @@ local function makeGearRow(category, tier)
     corner(row, 5)
 
     local nameLbl = Instance.new("TextLabel")
-    nameLbl.Size = UDim2.new(0.55, -8, 0.55, 0)
+    nameLbl.Size = UDim2.new(0.55, -8, 0.38, 0)
     nameLbl.Position = UDim2.new(0, 8, 0, 2)
     nameLbl.BackgroundTransparency = 1
     nameLbl.Text = statusIcon .. gd.name
@@ -109,11 +118,26 @@ local function makeGearRow(category, tier)
     nameLbl.TextXAlignment = Enum.TextXAlignment.Left
     nameLbl.Parent = row
 
+    -- Effect label — always shows the numeric bonus so players know what they get
+    local effectLbl = Instance.new("TextLabel")
+    effectLbl.Size = UDim2.new(0.55, -8, 0.28, 0)
+    effectLbl.Position = UDim2.new(0, 8, 0.38, 0)
+    effectLbl.BackgroundTransparency = 1
+    effectLbl.Text = gearEffectText(category, tier)
+    effectLbl.TextColor3 = Color3.fromRGB(80, 210, 255)
+    effectLbl.Font = Enum.Font.Gotham
+    effectLbl.TextScaled = true
+    effectLbl.TextXAlignment = Enum.TextXAlignment.Left
+    effectLbl.Parent = row
+
+    local costStatusText = isOwned
+        and (isEquipped and "Equipped" or "In storage")
+        or costText(gd.craftCost)
     local costLbl = Instance.new("TextLabel")
-    costLbl.Size = UDim2.new(0.55, -8, 0.42, 0)
-    costLbl.Position = UDim2.new(0, 8, 0.55, 0)
+    costLbl.Size = UDim2.new(0.55, -8, 0.28, 0)
+    costLbl.Position = UDim2.new(0, 8, 0.68, 0)
     costLbl.BackgroundTransparency = 1
-    costLbl.Text = isOwned and GEAR_DESCS[category] or costText(gd.craftCost)
+    costLbl.Text = costStatusText
     costLbl.TextColor3 = isOwned and Color3.fromRGB(150, 200, 150)
         or (affordable and Color3.fromRGB(255, 220, 80) or Color3.fromRGB(180, 100, 100))
     costLbl.Font = Enum.Font.Gotham
