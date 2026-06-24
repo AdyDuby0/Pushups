@@ -114,6 +114,7 @@ local extracting   = false
 local currentNode  = nil
 
 local function onNodeClicked(node)
+    print("[GemPowerCore] node clicked:", node.Name, "GemType=", node:GetAttribute("GemType"))
     if not node:GetAttribute("GemType") then return end
 
     if not extracting then
@@ -122,12 +123,14 @@ local function onNodeClicked(node)
         local gemType   = node:GetAttribute("GemType")
         local remaining = node:GetAttribute("Remaining") or 0
         local ok, extractTime = RF.StartExtraction:InvokeServer(node)
+        print("[GemPowerCore] StartExtraction returned:", ok, extractTime)
         if ok then
             NodeFeedback.Attach(node, gemType, remaining, extractTime or 1.5)
             HUD.ShowNotification("Extracting " .. gemType .. "… click again to stop.")
         else
             extracting  = false
             currentNode = nil
+            HUD.ShowNotification("Could not start: " .. tostring(extractTime))
         end
     else
         extracting  = false
@@ -158,10 +161,12 @@ local function setupNode(part)
     end)
 end
 
+local wiredCount = 0
 local nodesFolder = workspace:WaitForChild("GemNodes", 30)
 if nodesFolder then
     for _, part in ipairs(nodesFolder:GetChildren()) do
         setupNode(part)
+        if wiredNodes[part] then wiredCount += 1 end
     end
     -- Wire up nodes that respawn or are added later
     nodesFolder.ChildAdded:Connect(function(part)
@@ -172,4 +177,4 @@ else
     warn("[GemPowerCore] Workspace.GemNodes folder not found — gem nodes won't be clickable.")
 end
 
-print("[GemPowerCore] Client ready — v2.")
+print("[GemPowerCore] Client ready — v3 (clickdetector). Wired " .. wiredCount .. " gem node(s).")
