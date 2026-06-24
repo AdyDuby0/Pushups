@@ -1,6 +1,5 @@
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService  = game:GetService("UserInputService")
 
 local player    = Players.LocalPlayer
 local playerGui = player.PlayerGui
@@ -108,47 +107,63 @@ R.UpdatePotions:Connect(function(activePotions)
 end)
 
 -- ── Gem node click to extract ─────────────────────────────────────────────────
+-- Every part inside Workspace.GemNodes gets a ClickDetector so it shows a hover
+-- cursor and is obviously clickable. Clicking toggles extraction on that node.
 
-local extracting = false
+local extracting   = false
+local currentNode  = nil
 
-UserInputService.InputBegan:Connect(function(input, processed)
-    if processed then return end
-    if input.UserInputType ~= Enum.UserInputType.MouseButton1
-    and input.UserInputType ~= Enum.UserInputType.Touch then return end
+local function onNodeClicked(node)
+    if not node:GetAttribute("GemType") then return end
 
-    local camera   = workspace.CurrentCamera
-    local screenPos = (input.UserInputType == Enum.UserInputType.Touch)
-        and input.Position
-        or UserInputService:GetMouseLocation()
-    local ray      = camera:ScreenPointToRay(screenPos.X, screenPos.Y)
-
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Exclude
-    if player.Character then
-        params.FilterDescendantsInstances = { player.Character }
-    end
-    local result   = workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
-
-    if result and result.Instance and result.Instance:GetAttribute("GemType") then
-        local node = result.Instance
-        if not extracting then
-            extracting = true
-            local gemType    = node:GetAttribute("GemType")
-            local remaining  = node:GetAttribute("Remaining") or 0
-            local ok, extractTime = RF.StartExtraction:InvokeServer(node)
-            if ok then
-                NodeFeedback.Attach(node, gemType, remaining, extractTime or 1.5)
-                HUD.ShowNotification("Extracting " .. gemType .. "… click again to stop.")
-            else
-                extracting = false
-            end
+    if not extracting then
+        extracting  = true
+        currentNode = node
+        local gemType   = node:GetAttribute("GemType")
+        local remaining = node:GetAttribute("Remaining") or 0
+        local ok, extractTime = RF.StartExtraction:InvokeServer(node)
+        if ok then
+            NodeFeedback.Attach(node, gemType, remaining, extractTime or 1.5)
+            HUD.ShowNotification("Extracting " .. gemType .. "… click again to stop.")
         else
-            extracting = false
-            RF.StopExtraction:InvokeServer()
-            NodeFeedback.Detach()
-            HUD.ShowNotification("Extraction stopped.")
+            extracting  = false
+            currentNode = nil
         end
+    else
+        extracting  = false
+        currentNode = nil
+        RF.StopExtraction:InvokeServer()
+        NodeFeedback.Detach()
+        HUD.ShowNotification("Extraction stopped.")
     end
-end)
+end
+
+local function setupNode(part)
+    if not part:IsA("BasePart") then return end
+    if not part:GetAttribute("GemType") then return end
+    if part:FindFirstChildOfClass("ClickDetector") then return end
+
+    local cd = Instance.new("ClickDetector")
+    cd.MaxActivationDistance = 40
+    cd.CursorIcon = ""
+    cd.Parent = part
+    cd.MouseClick:Connect(function()
+        onNodeClicked(part)
+    end)
+end
+
+local nodesFolder = workspace:WaitForChild("GemNodes", 30)
+if nodesFolder then
+    for _, part in ipairs(nodesFolder:GetChildren()) do
+        setupNode(part)
+    end
+    -- Wire up nodes that respawn or are added later
+    nodesFolder.ChildAdded:Connect(function(part)
+        task.wait()  -- let attributes replicate
+        setupNode(part)
+    end)
+else
+    warn("[GemPowerCore] Workspace.GemNodes folder not found — gem nodes won't be clickable.")
+end
 
 print("[GemPowerCore] Client ready — v2.")
