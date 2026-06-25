@@ -182,9 +182,14 @@ end
 
 function updateUpgradeAffordability()
     for _, r in pairs(upgradeRows) do
-        local afford = data.credits >= r.entry.nextCost
-        r.buyBtn.BackgroundColor3 = afford and Color3.fromRGB(40, 140, 70) or Color3.fromRGB(55, 55, 75)
-        r.buyBtn.AutoButtonColor  = afford
+        if r.entry.atMax then
+            r.buyBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 160)
+            r.buyBtn.AutoButtonColor  = false
+        else
+            local afford = data.credits >= r.entry.nextCost
+            r.buyBtn.BackgroundColor3 = afford and Color3.fromRGB(40, 140, 70) or Color3.fromRGB(55, 55, 75)
+            r.buyBtn.AutoButtonColor  = afford
+        end
     end
 end
 
@@ -204,25 +209,41 @@ function refreshUpgrades()
         row.Parent               = upgradesFrame
         corner(row, 6)
 
+        local isMining = entry.kind == "mining"
+        local levelText = entry.maxLevel
+            and ("  Lv." .. entry.level .. "/" .. entry.maxLevel)
+            or  ("  Lv." .. entry.level)
+
         local nameLbl = Instance.new("TextLabel")
         nameLbl.Size                 = UDim2.new(0.58, -6, 0.55, 0)
         nameLbl.Position             = UDim2.new(0, 8, 0, 2)
         nameLbl.BackgroundTransparency = 1
-        nameLbl.Text                 = entry.icon .. " " .. entry.name .. "  Lv." .. entry.level
-        nameLbl.TextColor3           = Color3.fromRGB(180, 220, 255)
+        nameLbl.Text                 = entry.icon .. " " .. entry.name .. levelText
+        nameLbl.TextColor3           = isMining and Color3.fromRGB(150, 215, 255) or Color3.fromRGB(180, 220, 255)
         nameLbl.Font                 = Enum.Font.GothamBold
         nameLbl.TextScaled           = true
         nameLbl.TextXAlignment       = Enum.TextXAlignment.Left
         nameLbl.Parent               = row
 
+        local bonusText, bonusColor
+        if isMining then
+            bonusText = string.format("-%d%% mine time/lvl  •  now -%d%%",
+                math.floor(entry.reductionPerLevel * 100 + 0.5),
+                math.floor(entry.level * entry.reductionPerLevel * 100 + 0.5))
+            bonusColor = Color3.fromRGB(120, 200, 255)
+        else
+            bonusText = string.format("+%d%% per lvl  •  now +%d%%",
+                math.floor(entry.bonusPerLevel * 100 + 0.5),
+                math.floor(entry.level * entry.bonusPerLevel * 100 + 0.5))
+            bonusColor = Color3.fromRGB(120, 210, 130)
+        end
+
         local bonusLbl = Instance.new("TextLabel")
         bonusLbl.Size                 = UDim2.new(0.58, -6, 0.42, 0)
         bonusLbl.Position             = UDim2.new(0, 8, 0.55, 0)
         bonusLbl.BackgroundTransparency = 1
-        bonusLbl.Text                 = string.format("+%d%% per lvl  •  now +%d%%",
-            math.floor(entry.bonusPerLevel * 100 + 0.5),
-            math.floor(entry.level * entry.bonusPerLevel * 100 + 0.5))
-        bonusLbl.TextColor3           = Color3.fromRGB(120, 210, 130)
+        bonusLbl.Text                 = bonusText
+        bonusLbl.TextColor3           = bonusColor
         bonusLbl.Font                 = Enum.Font.Gotham
         bonusLbl.TextScaled           = true
         bonusLbl.TextXAlignment       = Enum.TextXAlignment.Left
@@ -232,23 +253,26 @@ function refreshUpgrades()
         buyBtn.Size              = UDim2.new(0.4, -8, 0.78, 0)
         buyBtn.Position          = UDim2.new(0.6, 0, 0.11, 0)
         buyBtn.BorderSizePixel   = 0
-        buyBtn.Text              = fmt(entry.nextCost) .. " CR"
+        buyBtn.Text              = entry.atMax and "MAX" or (fmt(entry.nextCost) .. " CR")
         buyBtn.TextColor3        = Color3.fromRGB(255, 255, 255)
         buyBtn.Font              = Enum.Font.GothamBold
         buyBtn.TextScaled        = true
         buyBtn.Parent            = row
         corner(buyBtn, 4)
 
-        local capKey = entry.key
-        buyBtn.MouseButton1Click:Connect(function()
-            local ok, result = RF_ref.BuyCoreUpgrade:InvokeServer(capKey)
-            if ok and type(result) == "table" then
-                entry.level    = result.level
-                entry.nextCost = result.nextCost
-                data.credits   = result.credits
-                refreshUpgrades()
-            end
-        end)
+        if not entry.atMax then
+            local capKey = entry.key
+            buyBtn.MouseButton1Click:Connect(function()
+                local ok, result = RF_ref.BuyCoreUpgrade:InvokeServer(capKey)
+                if ok and type(result) == "table" then
+                    entry.level    = result.level
+                    entry.nextCost = result.nextCost
+                    entry.atMax    = result.atMax
+                    data.credits   = result.credits
+                    refreshUpgrades()
+                end
+            end)
+        end
 
         upgradeRows[entry.key] = { buyBtn = buyBtn, entry = entry }
     end
@@ -381,20 +405,23 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
     upgLbl.Size                 = UDim2.new(1, -8, 0, 20)
     upgLbl.Position             = UDim2.new(0, 8, 0, 408)
     upgLbl.BackgroundTransparency = 1
-    upgLbl.Text                 = "⚡ CORE UPGRADES"
+    upgLbl.Text                 = "⚡ CORE & ⛏ DRILL UPGRADES"
     upgLbl.TextColor3           = Color3.fromRGB(255, 210, 90)
     upgLbl.Font                 = Enum.Font.GothamBold
     upgLbl.TextScaled           = true
     upgLbl.TextXAlignment       = Enum.TextXAlignment.Left
     upgLbl.Parent               = panel
 
-    -- Core upgrades container (rows stacked vertically)
-    upgradesFrame = Instance.new("Frame")
+    -- Core/drill upgrades container (scrollable — income + drill rows)
+    upgradesFrame = Instance.new("ScrollingFrame")
     upgradesFrame.Name            = "UpgradesFrame"
     upgradesFrame.Size            = UDim2.new(1, -8, 0, 156)
     upgradesFrame.Position        = UDim2.new(0, 4, 0, 430)
     upgradesFrame.BackgroundTransparency = 1
     upgradesFrame.BorderSizePixel = 0
+    upgradesFrame.ScrollBarThickness = 4
+    upgradesFrame.CanvasSize        = UDim2.new(0, 0, 0, 0)
+    upgradesFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
     upgradesFrame.Parent          = panel
 
     local upgLayout = Instance.new("UIListLayout")

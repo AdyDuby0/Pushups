@@ -22,6 +22,14 @@ return {
         { key = "singularity", name = "Singularity Drive", icon = "🌌", bonusPerLevel = 1.00, baseCost = 75000, growth = 1.30 },
     },
 
+    -- Permanent, repeatable drill upgrades that cut mine time (credits-based).
+    -- reductionPerLevel stacks additively with drill gear / potions, capped by
+    -- MIN_MINE_FRACTION above. Combined max here is -85%, matching the cap.
+    MINING_UPGRADES = {
+        { key = "drilltuning", name = "Drill Tuning", icon = "⛏", reductionPerLevel = 0.025, baseCost = 300,  growth = 1.16, maxLevel = 16 },
+        { key = "plasmabore",  name = "Plasma Bore",  icon = "🔩", reductionPerLevel = 0.05,  baseCost = 6000, growth = 1.24, maxLevel = 9  },
+    },
+
     GAMEPASSES = {
         DOUBLE_INCOME   = 0,
         AUTO_EXTRACT    = 0,

@@ -1,6 +1,18 @@
 local TweenService  = game:GetService("TweenService")
 local Players       = game:GetService("Players")
 local PotionTypes   = require(game.ReplicatedStorage:WaitForChild("Config"):WaitForChild("PotionTypes"))
+local GameConfig    = require(game.ReplicatedStorage:WaitForChild("Config"):WaitForChild("GameConfig"))
+
+-- Premium 💎 boosts live in activePotions too but aren't in PotionTypes;
+-- build a lookup so the active-bar can render them like potions.
+local PREMIUM_BY_KEY = {}
+for _, item in ipairs(GameConfig.PREMIUM_ITEMS) do
+    PREMIUM_BY_KEY[item.key] = {
+        icon        = item.icon,
+        displayName = item.name,
+        color       = Color3.fromRGB(150, 90, 230),
+    }
+end
 
 local HUD = {}
 local creditsLabel, incomeLabel, gemCurrLabel, leaderboardList, notifLabel, potionBar
@@ -226,7 +238,7 @@ function HUD.UpdatePotions(activePotions)
     end
 
     for potionType, secondsLeft in pairs(activePotions) do
-        local pd = PotionTypes[potionType]
+        local pd = PotionTypes[potionType] or PREMIUM_BY_KEY[potionType]
         if not pd then continue end
 
         local pill = Instance.new("Frame")

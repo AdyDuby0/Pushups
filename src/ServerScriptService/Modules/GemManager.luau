@@ -20,22 +20,42 @@ function GemManager.Init(dm, remotes)
     Remotes     = remotes
 end
 
--- Effective mine time after drill gear + ExtractionRush potion reductions
+-- Effective mine time after drill gear, permanent drill upgrades, potions,
+-- and premium boosts. All reductions stack additively, capped by MIN_MINE_FRACTION.
 local function effectiveMineTime(data, baseTime)
     local reduction = 0
+
+    -- Drill gear
     if data.gear.drill then
         reduction += GearTypes.Drill[data.gear.drill.tier].timeReduction
     end
-    local now = os.time()
-    if data.activePotions.ExtractionRush and data.activePotions.ExtractionRush > now then
-        reduction += PotionTypes.ExtractionRush.effects.extractReduction
+
+    -- Permanent repeatable drill upgrades (credits)
+    for _, cfg in ipairs(GameConfig.MINING_UPGRADES) do
+        local level = (data.coreUpgrades and data.coreUpgrades[cfg.key]) or 0
+        reduction += level * cfg.reductionPerLevel
     end
+
+    local now = os.time()
+
+    -- Any active potion that grants extractReduction (DrillBoost, ExtractionRush, …)
+    for potionType, expiresAt in pairs(data.activePotions) do
+        if expiresAt > now then
+            local pd = PotionTypes[potionType]
+            if pd and pd.effects and pd.effects.extractReduction then
+                reduction += pd.effects.extractReduction
+            end
+        end
+    end
+
+    -- Premium 💎 boosts
     for _, item in ipairs(GameConfig.PREMIUM_ITEMS) do
         local expiresAt = data.activePotions[item.key]
         if expiresAt and expiresAt > now and item.extractReduction then
             reduction += item.extractReduction
         end
     end
+
     reduction = math.min(reduction, 1 - GameConfig.MIN_MINE_FRACTION)
     return math.max(baseTime * (1 - reduction), 1)
 end

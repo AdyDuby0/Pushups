@@ -11,6 +11,15 @@ return {
         effects     = { incomeBonus = 0.50 },
         craftCost   = { credits = 5000,  Voidstone = 5 },
     },
+    DrillBoost = {
+        displayName = "Drill Boost",
+        description = "−35% mine time for 20 min",
+        icon        = "⛏",
+        color       = Color3.fromRGB(120, 220, 255),
+        duration    = 1200,
+        effects     = { extractReduction = 0.35 },
+        craftCost   = { credits = 1500 },   -- credits only: accessible early
+    },
     ExtractionRush = {
         displayName = "Extraction Rush",
         description = "−50% extraction time for 30 min",

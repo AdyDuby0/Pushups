@@ -147,14 +147,28 @@ function PowerCoreManager.UpgradeCore(player)
     return true
 end
 
--- Returns the client-facing list of repeatable core upgrades with live levels/costs
+-- Find an upgrade config by key in either the income or mining lists.
+local function findUpgradeCfg(key)
+    for _, c in ipairs(GameConfig.CORE_UPGRADES) do
+        if c.key == key then return c, "income" end
+    end
+    for _, c in ipairs(GameConfig.MINING_UPGRADES) do
+        if c.key == key then return c, "mining" end
+    end
+    return nil
+end
+
+-- Returns the client-facing list of repeatable upgrades (income + drill) with
+-- live levels/costs. Each entry carries `kind` so the UI can label it correctly.
 function PowerCoreManager.GetCoreUpgradeInfo(player)
     local data = DataManager.Get(player)
     local info = {}
     if not data then return info end
+
     for _, cfg in ipairs(GameConfig.CORE_UPGRADES) do
         local level = (data.coreUpgrades and data.coreUpgrades[cfg.key]) or 0
         table.insert(info, {
+            kind          = "income",
             key           = cfg.key,
             name          = cfg.name,
             icon          = cfg.icon,
@@ -163,6 +177,23 @@ function PowerCoreManager.GetCoreUpgradeInfo(player)
             nextCost      = math.floor(cfg.baseCost * cfg.growth ^ level),
         })
     end
+
+    for _, cfg in ipairs(GameConfig.MINING_UPGRADES) do
+        local level = (data.coreUpgrades and data.coreUpgrades[cfg.key]) or 0
+        local atMax = cfg.maxLevel ~= nil and level >= cfg.maxLevel
+        table.insert(info, {
+            kind              = "mining",
+            key               = cfg.key,
+            name              = cfg.name,
+            icon              = cfg.icon,
+            level             = level,
+            reductionPerLevel = cfg.reductionPerLevel,
+            maxLevel          = cfg.maxLevel,
+            atMax             = atMax,
+            nextCost          = atMax and 0 or math.floor(cfg.baseCost * cfg.growth ^ level),
+        })
+    end
+
     return info
 end
 
@@ -170,24 +201,26 @@ function PowerCoreManager.BuyCoreUpgrade(player, key)
     local data = DataManager.Get(player)
     if not data then return false, "No data" end
 
-    local cfg
-    for _, c in ipairs(GameConfig.CORE_UPGRADES) do
-        if c.key == key then cfg = c break end
-    end
+    local cfg = findUpgradeCfg(key)
     if not cfg then return false, "Unknown upgrade" end
 
     data.coreUpgrades = data.coreUpgrades or {}
     local level = data.coreUpgrades[key] or 0
+    if cfg.maxLevel and level >= cfg.maxLevel then return false, "Max level" end
+
     local cost  = math.floor(cfg.baseCost * cfg.growth ^ level)
     if data.credits < cost then return false, "Not enough credits" end
 
     data.credits          -= cost
     data.coreUpgrades[key]  = level + 1
 
+    local newLevel = level + 1
+    local atMax    = cfg.maxLevel ~= nil and newLevel >= cfg.maxLevel
     return true, {
         key        = key,
-        level      = level + 1,
-        nextCost   = math.floor(cfg.baseCost * cfg.growth ^ (level + 1)),
+        level      = newLevel,
+        atMax      = atMax,
+        nextCost   = atMax and 0 or math.floor(cfg.baseCost * cfg.growth ^ newLevel),
         credits    = data.credits,
         incomeRate = PowerCoreManager.GetIncomeRate(player),
     }

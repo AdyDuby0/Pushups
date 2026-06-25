@@ -14,7 +14,7 @@ local DEFAULT_DATA = {
     coreLevel       = 1,
     coreSlots       = {},
     -- Repeatable core upgrades: { upgradeKey = level }
-    coreUpgrades    = { overclock = 0, surge = 0, singularity = 0 },
+    coreUpgrades    = { overclock = 0, surge = 0, singularity = 0, drilltuning = 0, plasmabore = 0 },
     -- Gear: one piece per category, nil means nothing equipped
     gear = {
         conductor   = nil,   -- { tier = N } or nil

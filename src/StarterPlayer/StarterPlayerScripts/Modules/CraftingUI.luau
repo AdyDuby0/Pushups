@@ -12,6 +12,9 @@ local playerData = { gems = {}, credits = 0, craftedGear = {}, gear = {}, potion
 
 local gearPanel, potionPanel
 local gearListFrame, potionListFrame
+local gearFilterBar
+local gearFilter = "all"     -- "all" | "owned" | "locked"
+local filterBtns = {}        -- filterKey -> button
 
 local GEAR_CATEGORIES = { "Conductor", "Amplifier", "Capacitor", "Drill" }
 
@@ -95,6 +98,25 @@ local function makeSectionHeader(text, color)
     lbl.TextScaled = true
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.Parent = hdr
+end
+
+local function makeEmptyNote(text)
+    local holder = Instance.new("Frame")
+    holder.Size = UDim2.new(1, -4, 0, 48)
+    holder.BackgroundTransparency = 1
+    holder.BorderSizePixel = 0
+    holder.Parent = gearListFrame
+
+    local note = Instance.new("TextLabel")
+    note.Size = UDim2.new(1, -12, 1, 0)
+    note.Position = UDim2.new(0, 6, 0, 0)
+    note.BackgroundTransparency = 1
+    note.Text = text
+    note.TextColor3 = Color3.fromRGB(150, 150, 180)
+    note.Font = Enum.Font.Gotham
+    note.TextSize = 15
+    note.TextWrapped = true
+    note.Parent = holder
 end
 
 local function makeGearRow(category, tier)
@@ -255,13 +277,27 @@ function rebuildGear()
         return a.tier < b.tier
     end)
 
-    if #ownedGroup > 0 then
-        makeSectionHeader("─  OWNED  ─", Color3.fromRGB(120, 255, 120))
+    local showOwned  = gearFilter ~= "locked"
+    local showLocked = gearFilter ~= "owned"
+
+    if showOwned then
+        -- Section header only in combined view; the filter buttons label single views
+        if gearFilter == "all" and #ownedGroup > 0 then
+            makeSectionHeader("─  OWNED  ─", Color3.fromRGB(120, 255, 120))
+        end
+        if #ownedGroup == 0 and gearFilter == "owned" then
+            makeEmptyNote("You haven't crafted any gear yet — check the Locked tab to build some.")
+        end
         for _, e in ipairs(ownedGroup) do makeGearRow(e.category, e.tier) end
     end
 
-    if #lockedGroup > 0 then
-        makeSectionHeader("─  LOCKED  ─", Color3.fromRGB(160, 160, 220))
+    if showLocked then
+        if gearFilter == "all" and #lockedGroup > 0 then
+            makeSectionHeader("─  LOCKED  ─", Color3.fromRGB(160, 160, 220))
+        end
+        if #lockedGroup == 0 and gearFilter == "locked" then
+            makeEmptyNote("Everything's unlocked. You own every gear piece!")
+        end
         for _, e in ipairs(lockedGroup) do makeGearRow(e.category, e.tier) end
     end
 end
@@ -473,9 +509,49 @@ function CraftingUI.Init(playerGui, initData, RF)
     contentArea.BorderSizePixel = 0
     contentArea.Parent = panel
 
-    -- Gear scroll
+    -- Gear filter bar: All / Owned / Locked (only shown on the Gear tab)
+    gearFilterBar = Instance.new("Frame")
+    gearFilterBar.Size = UDim2.new(1, 0, 0, 30)
+    gearFilterBar.Position = UDim2.new(0, 0, 0, 0)
+    gearFilterBar.BackgroundTransparency = 1
+    gearFilterBar.BorderSizePixel = 0
+    gearFilterBar.Parent = contentArea
+
+    local function makeFilterBtn(key, label, xPos)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.327, 0, 1, 0)
+        btn.Position = UDim2.new(xPos, 0, 0, 0)
+        btn.BackgroundColor3 = Color3.fromRGB(25, 25, 50)
+        btn.BorderSizePixel = 0
+        btn.Text = label
+        btn.TextColor3 = Color3.fromRGB(200, 200, 220)
+        btn.Font = Enum.Font.GothamBold
+        btn.TextScaled = true
+        btn.Parent = gearFilterBar
+        corner(btn, 4)
+        filterBtns[key] = btn
+        btn.MouseButton1Click:Connect(function()
+            gearFilter = key
+            for k, b in pairs(filterBtns) do
+                b.BackgroundColor3 = (k == key) and Color3.fromRGB(45, 80, 110) or Color3.fromRGB(25, 25, 50)
+                b.TextColor3 = (k == key) and Color3.fromRGB(120, 220, 255) or Color3.fromRGB(200, 200, 220)
+            end
+            rebuildGear()
+        end)
+        return btn
+    end
+
+    makeFilterBtn("all",    "All",    0)
+    makeFilterBtn("owned",  "Owned",  0.337)
+    makeFilterBtn("locked", "Locked", 0.674)
+    -- Highlight default
+    filterBtns.all.BackgroundColor3 = Color3.fromRGB(45, 80, 110)
+    filterBtns.all.TextColor3 = Color3.fromRGB(120, 220, 255)
+
+    -- Gear scroll (sits below the filter bar)
     local gearScroll = Instance.new("ScrollingFrame")
-    gearScroll.Size = UDim2.new(1, 0, 1, 0)
+    gearScroll.Size = UDim2.new(1, 0, 1, -34)
+    gearScroll.Position = UDim2.new(0, 0, 0, 34)
     gearScroll.BackgroundTransparency = 1
     gearScroll.BorderSizePixel = 0
     gearScroll.ScrollBarThickness = 4
@@ -508,16 +584,18 @@ function CraftingUI.Init(playerGui, initData, RF)
     potionPanel = potionScroll
 
     gearTab.MouseButton1Click:Connect(function()
-        gearScroll.Visible   = true
-        potionScroll.Visible = false
+        gearScroll.Visible    = true
+        gearFilterBar.Visible = true
+        potionScroll.Visible  = false
         gearTab.BackgroundColor3   = Color3.fromRGB(40, 40, 80)
         potionTab.BackgroundColor3 = Color3.fromRGB(25, 25, 50)
         rebuildGear()
     end)
 
     potionTab.MouseButton1Click:Connect(function()
-        gearScroll.Visible   = false
-        potionScroll.Visible = true
+        gearScroll.Visible    = false
+        gearFilterBar.Visible = false
+        potionScroll.Visible  = true
         gearTab.BackgroundColor3   = Color3.fromRGB(25, 25, 50)
         potionTab.BackgroundColor3 = Color3.fromRGB(40, 40, 80)
         rebuildPotions()
