@@ -31,8 +31,10 @@ local RF = {
     CraftGear       = RemotesFolder:WaitForChild("CraftGear"),
     EquipGear       = RemotesFolder:WaitForChild("EquipGear"),
     UnequipGear     = RemotesFolder:WaitForChild("UnequipGear"),
-    BrewPotion      = RemotesFolder:WaitForChild("BrewPotion"),
-    UsePotion       = RemotesFolder:WaitForChild("UsePotion"),
+    BrewPotion          = RemotesFolder:WaitForChild("BrewPotion"),
+    UsePotion           = RemotesFolder:WaitForChild("UsePotion"),
+    ConvertGems         = RemotesFolder:WaitForChild("ConvertGems"),
+    BuyPremiumBoost     = RemotesFolder:WaitForChild("BuyPremiumBoost"),
 }
 
 local Modules          = script.Parent:WaitForChild("Modules")
@@ -40,6 +42,7 @@ local HUD              = require(Modules:WaitForChild("HUD"))
 local PlotUI           = require(Modules:WaitForChild("PlotUI"))
 local MarketUI         = require(Modules:WaitForChild("MarketUI"))
 local CraftingUI       = require(Modules:WaitForChild("CraftingUI"))
+local ShopUI           = require(Modules:WaitForChild("ShopUI"))
 local TutorialManager  = require(Modules:WaitForChild("TutorialManager"))
 local NodeFeedback     = require(Modules:WaitForChild("NodeFeedback"))
 
@@ -56,6 +59,7 @@ PlotUI.Init(playerGui, initData, RF, {
 })
 MarketUI.Init(playerGui, initData, RF)
 CraftingUI.Init(playerGui, initData, RF)
+ShopUI.Init(playerGui, initData, RF)
 TutorialManager.Start(playerGui, initData)
 
 -- ── Server event hooks ────────────────────────────────────────────────────────
@@ -65,6 +69,9 @@ R.UpdateHUD.OnClientEvent:Connect(function(hudData)
     if hudData.credits then
         CraftingUI.UpdateCredits(hudData.credits)
         PlotUI.UpdateCredits(hudData.credits)
+    end
+    if hudData.gemCurrency then
+        ShopUI.UpdateGemCurrency(hudData.gemCurrency)
     end
 end)
 

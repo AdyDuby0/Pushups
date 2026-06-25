@@ -21,6 +21,9 @@ local PRODUCT_HANDLERS = {
         data.gems["Neutronium"]  = (data.gems["Neutronium"]  or 0) + 5
         data.gems["Voidstone"]   = (data.gems["Voidstone"]   or 0) + 10
     end,
+    [PRODUCTS.GEM_SMALL]  = function(data) data.gemCurrency = (data.gemCurrency or 0) + 100 end,
+    [PRODUCTS.GEM_MEDIUM] = function(data) data.gemCurrency = (data.gemCurrency or 0) + 500 end,
+    [PRODUCTS.GEM_LARGE]  = function(data) data.gemCurrency = (data.gemCurrency or 0) + 2000 end,
 }
 
 function MonetizationManager.Init(dm)

@@ -63,7 +63,7 @@ function PowerCoreManager.GetIncomeRate(player)
     -- Conductor
     base = base * (1 + conductorBonus)
 
-    -- Active potions
+    -- Active potions + premium boosts
     local now = os.time()
     local potionBonus = 0
     for potionType, expiresAt in pairs(data.activePotions) do
@@ -72,6 +72,12 @@ function PowerCoreManager.GetIncomeRate(player)
             if pd and pd.effects.incomeBonus then
                 potionBonus += pd.effects.incomeBonus
             end
+        end
+    end
+    for _, item in ipairs(GameConfig.PREMIUM_ITEMS) do
+        local expiresAt = data.activePotions[item.key]
+        if expiresAt and expiresAt > now and item.incomeBonus then
+            potionBonus += item.incomeBonus
         end
     end
     base = base * (1 + potionBonus)

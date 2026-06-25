@@ -30,6 +30,12 @@ local function effectiveMineTime(data, baseTime)
     if data.activePotions.ExtractionRush and data.activePotions.ExtractionRush > now then
         reduction += PotionTypes.ExtractionRush.effects.extractReduction
     end
+    for _, item in ipairs(GameConfig.PREMIUM_ITEMS) do
+        local expiresAt = data.activePotions[item.key]
+        if expiresAt and expiresAt > now and item.extractReduction then
+            reduction += item.extractReduction
+        end
+    end
     reduction = math.min(reduction, 1 - GameConfig.MIN_MINE_FRACTION)
     return math.max(baseTime * (1 - reduction), 1)
 end

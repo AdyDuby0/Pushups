@@ -51,8 +51,10 @@ local RFn = {
     CraftGear       = fn("CraftGear"),
     EquipGear       = fn("EquipGear"),
     UnequipGear     = fn("UnequipGear"),
-    BrewPotion      = fn("BrewPotion"),
-    UsePotion       = fn("UsePotion"),
+    BrewPotion          = fn("BrewPotion"),
+    UsePotion           = fn("UsePotion"),
+    ConvertGems         = fn("ConvertGems"),
+    BuyPremiumBoost     = fn("BuyPremiumBoost"),
 }
 
 -- ── Init ──────────────────────────────────────────────────────────────────────
@@ -176,7 +178,6 @@ RFn.UsePotion.OnServerInvoke = function(p, potionType)
     local ok, expiresAt = PotionManager.Use(p, potionType)
     if ok then
         R.UpdatePotions:FireClient(p, PotionManager.GetActive(p))
-        -- Income might have changed (potion with incomeBonus)
         local data = DataManager.Get(p)
         R.UpdateHUD:FireClient(p, {
             credits    = data.credits,
@@ -184,6 +185,51 @@ RFn.UsePotion.OnServerInvoke = function(p, potionType)
         })
     end
     return ok, expiresAt
+end
+
+RFn.ConvertGems.OnServerInvoke = function(p, amount)
+    amount = math.floor(tonumber(amount) or 0)
+    if amount <= 0 then return false, "Invalid amount" end
+    local data = DataManager.Get(p)
+    if not data then return false, "No data" end
+    if (data.gemCurrency or 0) < amount then return false, "Not enough 💎" end
+    data.gemCurrency -= amount
+    data.credits     += amount * GameConfig.GEM_TO_CREDITS_RATE
+    DataManager.Save(p)
+    R.UpdateHUD:FireClient(p, {
+        credits     = data.credits,
+        gemCurrency = data.gemCurrency,
+    })
+    return true, { credits = data.credits, gemCurrency = data.gemCurrency }
+end
+
+RFn.BuyPremiumBoost.OnServerInvoke = function(p, itemKey)
+    local data = DataManager.Get(p)
+    if not data then return false, "No data" end
+
+    local item
+    for _, cfg in ipairs(GameConfig.PREMIUM_ITEMS) do
+        if cfg.key == itemKey then item = cfg break end
+    end
+    if not item then return false, "Unknown item" end
+
+    if (data.gemCurrency or 0) < item.gemCost then return false, "Not enough 💎" end
+    data.gemCurrency -= item.gemCost
+
+    -- Stack onto existing timer if still active
+    local now = os.time()
+    local existing = data.activePotions[item.key]
+    local base = (existing and existing > now) and existing or now
+    data.activePotions[item.key] = base + item.duration
+
+    DataManager.Save(p)
+    R.UpdatePotions:FireClient(p, PotionManager.GetActive(p))
+    R.UpdateHUD:FireClient(p, {
+        gemCurrency = data.gemCurrency,
+        credits     = data.credits,
+        incomeRate  = PowerCoreManager.GetIncomeRate(p),
+    })
+    return true, { gemCurrency = data.gemCurrency, expiresAt = data.activePotions[item.key] }
 end
 
 -- ── Player lifecycle ──────────────────────────────────────────────────────────

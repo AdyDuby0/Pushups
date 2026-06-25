@@ -76,14 +76,25 @@ end
 
 local rebuildGear  -- forward declaration (row buttons call it)
 
--- Lower number = higher on the list. Craftable rises to the top.
-local function gearPriority(category, tier)
-    if canAfford(GearTypes[category][tier].craftCost) and not owned(category, tier) then
-        return 0  -- craftable right now
-    end
-    if equipped(category, tier) then return 1 end
-    if owned(category, tier)    then return 2 end
-    return 3  -- locked
+local function makeSectionHeader(text, color)
+    local hdr = Instance.new("Frame")
+    hdr.Size = UDim2.new(1, -4, 0, 26)
+    hdr.BackgroundColor3 = Color3.fromRGB(14, 14, 32)
+    hdr.BackgroundTransparency = 0.2
+    hdr.BorderSizePixel = 0
+    hdr.Parent = gearListFrame
+    corner(hdr, 4)
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, -8, 1, 0)
+    lbl.Position = UDim2.new(0, 8, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = color
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextScaled = true
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Parent = hdr
 end
 
 local function makeGearRow(category, tier)
@@ -212,23 +223,46 @@ function rebuildGear()
         if c:IsA("Frame") then c:Destroy() end
     end
 
-    -- Flatten every gear piece, then sort so the items you can act on come first
-    local entries = {}
+    local ownedGroup  = {}
+    local lockedGroup = {}
+
     for ci, category in ipairs(GEAR_CATEGORIES) do
         for tier = 1, 4 do
-            table.insert(entries, { category = category, tier = tier, ci = ci })
+            local e = { category = category, tier = tier, ci = ci }
+            if owned(category, tier) or equipped(category, tier) then
+                table.insert(ownedGroup, e)
+            else
+                table.insert(lockedGroup, e)
+            end
         end
     end
-    table.sort(entries, function(a, b)
-        local pa = gearPriority(a.category, a.tier)
-        local pb = gearPriority(b.category, b.tier)
+
+    -- Owned: equipped first, then in-storage, sorted by category then tier
+    table.sort(ownedGroup, function(a, b)
+        local pa = equipped(a.category, a.tier) and 0 or 1
+        local pb = equipped(b.category, b.tier) and 0 or 1
         if pa ~= pb then return pa < pb end
         if a.ci ~= b.ci then return a.ci < b.ci end
         return a.tier < b.tier
     end)
 
-    for _, e in ipairs(entries) do
-        makeGearRow(e.category, e.tier)
+    -- Locked: craftable (affordable) first, then by category then tier
+    table.sort(lockedGroup, function(a, b)
+        local pa = canAfford(GearTypes[a.category][a.tier].craftCost) and 0 or 1
+        local pb = canAfford(GearTypes[b.category][b.tier].craftCost) and 0 or 1
+        if pa ~= pb then return pa < pb end
+        if a.ci ~= b.ci then return a.ci < b.ci end
+        return a.tier < b.tier
+    end)
+
+    if #ownedGroup > 0 then
+        makeSectionHeader("─  OWNED  ─", Color3.fromRGB(120, 255, 120))
+        for _, e in ipairs(ownedGroup) do makeGearRow(e.category, e.tier) end
+    end
+
+    if #lockedGroup > 0 then
+        makeSectionHeader("─  LOCKED  ─", Color3.fromRGB(160, 160, 220))
+        for _, e in ipairs(lockedGroup) do makeGearRow(e.category, e.tier) end
     end
 end
 

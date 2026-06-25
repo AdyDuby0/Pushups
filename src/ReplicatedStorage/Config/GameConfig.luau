@@ -28,11 +28,53 @@ return {
         EXTRA_SLOTS     = 0,
         VIP             = 0,
     },
+    -- Robux prices shown in Shop UI (for display only; real price set in Roblox dashboard)
+    GAMEPASSES_ROBUX = {
+        DOUBLE_INCOME   = 299,
+        EXTRA_SLOTS     = 199,
+        VIP             = 499,
+    },
     PRODUCTS = {
         CREDITS_SMALL   = 0,
         CREDITS_MEDIUM  = 0,
         CREDITS_LARGE   = 0,
         RARE_GEM_PACK   = 0,
         ENERGY_POTION   = 0,
+        GEM_SMALL       = 0,   -- 100 💎  (R$99)
+        GEM_MEDIUM      = 0,   -- 500 💎  (R$399)
+        GEM_LARGE       = 0,   -- 2000 💎 (R$1,199)
+    },
+    -- 1 💎 → this many 💰 when converting in the shop
+    GEM_TO_CREDITS_RATE = 5000,
+
+    -- Premium temporary boosts purchasable with 💎
+    PREMIUM_ITEMS = {
+        {
+            key         = "PremiumIncomeSurge",
+            name        = "Income Surge",
+            icon        = "⚡",
+            description = "+200% income for 1 hour",
+            gemCost     = 50,
+            duration    = 3600,
+            incomeBonus = 2.0,
+        },
+        {
+            key              = "PremiumMiningRush",
+            name             = "Mining Rush",
+            icon             = "⛏",
+            description      = "-75% mine time for 1 hour",
+            gemCost          = 30,
+            duration         = 3600,
+            extractReduction = 0.75,
+        },
+        {
+            key         = "PremiumCoreOverdrive",
+            name        = "Core Overdrive",
+            icon        = "🔋",
+            description = "+500% income for 15 minutes",
+            gemCost     = 40,
+            duration    = 900,
+            incomeBonus = 5.0,
+        },
     },
 }
