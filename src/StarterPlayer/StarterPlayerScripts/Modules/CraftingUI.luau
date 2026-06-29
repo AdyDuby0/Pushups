@@ -11,6 +11,8 @@ local RF_ref
 local playerData = { gems = {}, credits = 0, craftedGear = {}, gear = {}, potionInventory = {} }
 
 local gearPanel, potionPanel
+local craftPanel
+local craftOpen = false
 local gearListFrame, potionListFrame
 local gearFilterBar
 local gearFilter = "all"     -- "all" | "owned" | "locked"
@@ -605,19 +607,29 @@ function CraftingUI.Init(playerGui, initData, RF)
     gearTab.BackgroundColor3 = Color3.fromRGB(40, 40, 80)
     rebuildGear()
 
-    local open = false
+    craftPanel = panel
     Panels.Register("Crafting", function()
-        open = false
+        craftOpen = false
         panel.Visible = false
     end)
     toggleBtn.MouseButton1Click:Connect(function()
-        open = not open
-        panel.Visible = open
-        if open then
-            Panels.CloseOthers("Crafting")
-            rebuildGear()
-        end
+        CraftingUI.Toggle()
     end)
+end
+
+function CraftingUI.Toggle()
+    if not craftPanel then return end
+    craftOpen = not craftOpen
+    craftPanel.Visible = craftOpen
+    if craftOpen then
+        Panels.CloseOthers("Crafting")
+        rebuildGear()
+    end
+end
+
+function CraftingUI.Open()
+    if not craftPanel then return end
+    if not craftOpen then CraftingUI.Toggle() end
 end
 
 function CraftingUI.UpdateCredits(credits)

@@ -186,6 +186,45 @@ else
     warn("[GemPowerCore] Workspace.GemNodes folder not found — gem nodes won't be clickable.")
 end
 
+-- ── Physical station buttons (Market / Crafting / Shop) ───────────────────────
+-- WorldBuilder tags each pedestal with a StationType attribute and a
+-- ClickDetector. Clicking one toggles the matching UI panel.
+
+local stationOpeners = {
+    Market   = function() MarketUI.Toggle() end,
+    Crafting = function() CraftingUI.Toggle() end,
+    Shop     = function() ShopUI.Toggle() end,
+}
+
+local wiredStations = {}
+local function setupStation(inst)
+    if not inst:IsA("BasePart") then return end
+    local st = inst:GetAttribute("StationType")
+    if not st or not stationOpeners[st] then return end
+    if wiredStations[inst] then return end
+    wiredStations[inst] = true
+
+    local cd = inst:FindFirstChildOfClass("ClickDetector")
+    if not cd then
+        cd = Instance.new("ClickDetector")
+        cd.MaxActivationDistance = 16
+        cd.Parent = inst
+    end
+    cd.MouseClick:Connect(function()
+        stationOpeners[st]()
+    end)
+end
+
+do
+    local plotsFolder = workspace:WaitForChild("Plots", 30)
+    if plotsFolder then
+        for _, d in ipairs(plotsFolder:GetDescendants()) do
+            setupStation(d)
+        end
+        plotsFolder.DescendantAdded:Connect(setupStation)
+    end
+end
+
 -- ── Physical Power Core proximity ─────────────────────────────────────────────
 -- The server places a glowing core on your plot (workspace.PowerCores). When you
 -- walk up to YOUR core the Power Core menu opens; it closes when you walk away.

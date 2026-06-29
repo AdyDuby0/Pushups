@@ -9,6 +9,8 @@ local myGems    = {}
 local listings  = {}
 local listingsFrame
 local selectedGem
+local marketPanel
+local marketOpen = false
 
 -- Filter state for the listings view
 local filterGem  = nil        -- nil = show all gem types
@@ -413,16 +415,29 @@ function MarketUI.Init(playerGui, initData, RF)
 
     refreshListings()
 
-    local open = false
+    marketPanel = panel
     Panels.Register("Market", function()
-        open = false
+        marketOpen = false
         panel.Visible = false
     end)
     toggleBtn.MouseButton1Click:Connect(function()
-        open = not open
-        panel.Visible = open
-        if open then Panels.CloseOthers("Market") end
+        MarketUI.Toggle()
     end)
+end
+
+function MarketUI.Toggle()
+    if not marketPanel then return end
+    marketOpen = not marketOpen
+    marketPanel.Visible = marketOpen
+    if marketOpen then
+        Panels.CloseOthers("Market")
+        refreshListings()
+    end
+end
+
+function MarketUI.Open()
+    if not marketPanel then return end
+    if not marketOpen then MarketUI.Toggle() end
 end
 
 function MarketUI.UpdateListings(newListings)

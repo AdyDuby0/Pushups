@@ -8,7 +8,7 @@ return {
         rarityTier  = 1,
         baseFuel    = 5,
         color       = Color3.fromRGB(100, 200, 255),
-        mineTime    = 120,      -- 2 minutes
+        mineTime    = 45,       -- 45 seconds
         tradeValue  = 30,
     },
     Voidstone = {
@@ -17,7 +17,7 @@ return {
         rarityTier  = 2,
         baseFuel    = 20,
         color       = Color3.fromRGB(150, 50, 255),
-        mineTime    = 900,      -- 15 minutes
+        mineTime    = 240,      -- 4 minutes
         tradeValue  = 150,
     },
     Neutronium = {
@@ -26,7 +26,7 @@ return {
         rarityTier  = 3,
         baseFuel    = 80,
         color       = Color3.fromRGB(255, 150, 0),
-        mineTime    = 3600,     -- 1 hour
+        mineTime    = 900,      -- 15 minutes
         tradeValue  = 700,
     },
     SingularityCore = {
@@ -35,7 +35,7 @@ return {
         rarityTier  = 4,
         baseFuel    = 350,
         color       = Color3.fromRGB(255, 50, 50),
-        mineTime    = 14400,    -- 4 hours
+        mineTime    = 3600,     -- 1 hour
         tradeValue  = 4000,
     },
     PrimordialEssence = {
@@ -44,7 +44,7 @@ return {
         rarityTier  = 5,
         baseFuel    = 1500,
         color       = Color3.fromRGB(255, 180, 255),
-        mineTime    = 43200,    -- 12 hours
+        mineTime    = 10800,    -- 3 hours
         tradeValue  = 25000,
     },
     CosmicShard = {
@@ -53,7 +53,7 @@ return {
         rarityTier  = 6,
         baseFuel    = 8000,
         color       = Color3.fromRGB(200, 255, 255),
-        mineTime    = 86400,    -- 24 hours
+        mineTime    = 21600,    -- 6 hours
         tradeValue  = 200000,
     },
 }

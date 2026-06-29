@@ -13,7 +13,12 @@ local GearManager         = require(Mods:WaitForChild("GearManager"))
 local PotionManager       = require(Mods:WaitForChild("PotionManager"))
 local MonetizationManager = require(Mods:WaitForChild("MonetizationManager"))
 local PowerCoreModel      = require(Mods:WaitForChild("PowerCoreModel"))
+local WorldBuilder        = require(Mods:WaitForChild("WorldBuilder"))
 local GameConfig          = require(ReplicatedStorage.Config.GameConfig)
+
+-- Build the playable world (plots, fences, stations, gem nodes, lighting)
+-- before anything tries to find them.
+WorldBuilder.Build()
 
 -- ── Remotes ───────────────────────────────────────────────────────────────────
 
@@ -241,6 +246,7 @@ Players.PlayerAdded:Connect(function(player)
         local plot, idx = PlotManager.Assign(player)
         if plot then
             PowerCoreModel.Spawn(player, plot)
+            WorldBuilder.SetPlotOwner(idx, player.DisplayName)
         end
         local msg = plot
             and "Assigned to Plot " .. idx .. ". Head to a gem node and click to extract."
@@ -252,6 +258,8 @@ end)
 Players.PlayerRemoving:Connect(function(player)
     GemManager.StopExtraction(player)
     PowerCoreModel.Despawn(player)
+    local _, idx = PlotManager.GetPlot(player)
+    if idx then WorldBuilder.SetPlotOwner(idx, nil) end
     PlotManager.Release(player)
     DataManager.Unload(player)
 end)

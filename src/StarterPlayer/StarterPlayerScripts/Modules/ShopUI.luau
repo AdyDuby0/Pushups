@@ -12,6 +12,8 @@ local ShopUI = {}
 local RF_ref
 local gemCurrLabel  -- updated by UpdateGemCurrency
 local gemCurr = 0
+local shopPanel
+local shopOpen = false
 
 local function corner(inst, r)
     local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, r or 8); c.Parent = inst
@@ -324,16 +326,26 @@ function ShopUI.Init(playerGui, initData, RF)
 
     -- ── Panel toggle ─────────────────────────────────────────────────────────
 
-    local open = false
+    shopPanel = panel
     Panels.Register("Shop", function()
-        open = false
+        shopOpen = false
         panel.Visible = false
     end)
     toggleBtn.MouseButton1Click:Connect(function()
-        open = not open
-        panel.Visible = open
-        if open then Panels.CloseOthers("Shop") end
+        ShopUI.Toggle()
     end)
+end
+
+function ShopUI.Toggle()
+    if not shopPanel then return end
+    shopOpen = not shopOpen
+    shopPanel.Visible = shopOpen
+    if shopOpen then Panels.CloseOthers("Shop") end
+end
+
+function ShopUI.Open()
+    if not shopPanel then return end
+    if not shopOpen then ShopUI.Toggle() end
 end
 
 function ShopUI.UpdateGemCurrency(amount)
