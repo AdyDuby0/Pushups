@@ -15,6 +15,7 @@ local R = {
     Notification      = RemotesFolder:WaitForChild("Notification"),
     UpdateLeaderboard = RemotesFolder:WaitForChild("UpdateLeaderboard"),
     UpdatePotions     = RemotesFolder:WaitForChild("UpdatePotions"),
+    UpdateGemMarket   = RemotesFolder:WaitForChild("UpdateGemMarket"),
 }
 
 local RF = {
@@ -35,6 +36,7 @@ local RF = {
     UsePotion           = RemotesFolder:WaitForChild("UsePotion"),
     ConvertGems         = RemotesFolder:WaitForChild("ConvertGems"),
     BuyPremiumBoost     = RemotesFolder:WaitForChild("BuyPremiumBoost"),
+    SellToNPC           = RemotesFolder:WaitForChild("SellToNPC"),
 }
 
 local Modules          = script.Parent:WaitForChild("Modules")
@@ -43,6 +45,7 @@ local PlotUI           = require(Modules:WaitForChild("PlotUI"))
 local MarketUI         = require(Modules:WaitForChild("MarketUI"))
 local CraftingUI       = require(Modules:WaitForChild("CraftingUI"))
 local ShopUI           = require(Modules:WaitForChild("ShopUI"))
+local GemMarketUI      = require(Modules:WaitForChild("GemMarketUI"))
 local TutorialManager  = require(Modules:WaitForChild("TutorialManager"))
 local NodeFeedback     = require(Modules:WaitForChild("NodeFeedback"))
 
@@ -60,6 +63,7 @@ PlotUI.Init(playerGui, initData, RF, {
 MarketUI.Init(playerGui, initData, RF)
 CraftingUI.Init(playerGui, initData, RF)
 ShopUI.Init(playerGui, initData, RF)
+GemMarketUI.Init(playerGui, initData, RF)
 TutorialManager.Start(playerGui, initData)
 
 -- ── Server event hooks ────────────────────────────────────────────────────────
@@ -79,6 +83,11 @@ R.UpdateInventory.OnClientEvent:Connect(function(gems)
     PlotUI.UpdateGems(gems)
     MarketUI.UpdateGems(gems)
     CraftingUI.UpdateGems(gems)
+    GemMarketUI.UpdateGems(gems)
+end)
+
+R.UpdateGemMarket.OnClientEvent:Connect(function(snap)
+    GemMarketUI.UpdatePrices(snap)
 end)
 
 R.UpdateMarket.OnClientEvent:Connect(function(newListings)
@@ -191,9 +200,10 @@ end
 -- ClickDetector. Clicking one toggles the matching UI panel.
 
 local stationOpeners = {
-    Market   = function() MarketUI.Toggle() end,
-    Crafting = function() CraftingUI.Toggle() end,
-    Shop     = function() ShopUI.Toggle() end,
+    Market    = function() MarketUI.Toggle() end,
+    Crafting  = function() CraftingUI.Toggle() end,
+    Shop      = function() ShopUI.Toggle() end,
+    GemMarket = function() GemMarketUI.Toggle() end,
 }
 
 local wiredStations = {}
@@ -222,6 +232,15 @@ do
             setupStation(d)
         end
         plotsFolder.DescendantAdded:Connect(setupStation)
+    end
+
+    -- Central NPC kiosk (Gem Exchange) lives in its own model
+    local exchange = workspace:WaitForChild("GemExchange", 30)
+    if exchange then
+        for _, d in ipairs(exchange:GetDescendants()) do
+            setupStation(d)
+        end
+        exchange.DescendantAdded:Connect(setupStation)
     end
 end
 

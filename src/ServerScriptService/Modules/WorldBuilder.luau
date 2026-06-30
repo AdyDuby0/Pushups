@@ -298,6 +298,103 @@ local function buildSign(plot, origin, index)
     return lbl
 end
 
+-- ── NPC Gem Exchange kiosk (central, sell-only market) ──────────────────────
+local function buildGemExchange()
+    local model = Instance.new("Model"); model.Name = "GemExchange"
+    local pos = Vector3.new(0, GROUND_Y, 0)
+    local PURPLE = Color3.fromRGB(255, 170, 90)
+
+    -- raised circular platform
+    part(model, {
+        Name = "ExchangePad", Shape = Enum.PartType.Cylinder,
+        Size = Vector3.new(1, 18, 18),
+        CFrame = CFrame.new(pos + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+        Color = Color3.fromRGB(30, 26, 40), Material = Enum.Material.SmoothPlastic,
+    })
+    part(model, {
+        Name = "ExchangeRing", Shape = Enum.PartType.Cylinder,
+        Size = Vector3.new(0.4, 18.6, 18.6),
+        CFrame = CFrame.new(pos + Vector3.new(0, 1.0, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+        Color = PURPLE, Material = Enum.Material.Neon, CanCollide = false,
+    })
+
+    -- counter / console (the clickable station)
+    local desk = part(model, {
+        Name = "ExchangeDesk",
+        Size = Vector3.new(9, 4, 2.6),
+        Position = pos + Vector3.new(0, 2.4, 4),
+        Color = Color3.fromRGB(26, 24, 38), Material = Enum.Material.Metal,
+    })
+    desk:SetAttribute("StationType", "GemMarket")
+    part(model, {
+        Name = "DeskGlow",
+        Size = Vector3.new(9.2, 0.4, 2.8),
+        Position = pos + Vector3.new(0, 4.5, 4),
+        Color = PURPLE, Material = Enum.Material.Neon, CanCollide = false,
+    })
+    local cdDesk = Instance.new("ClickDetector"); cdDesk.MaxActivationDistance = 18; cdDesk.Parent = desk
+
+    -- simple robot vendor behind the counter
+    local torso = part(model, {
+        Name = "VendorTorso",
+        Size = Vector3.new(3.4, 4, 2),
+        Position = pos + Vector3.new(0, 4, 0),
+        Color = Color3.fromRGB(60, 60, 85), Material = Enum.Material.Metal,
+    })
+    torso:SetAttribute("StationType", "GemMarket")
+    local cdBot = Instance.new("ClickDetector"); cdBot.MaxActivationDistance = 18; cdBot.Parent = torso
+
+    part(model, {
+        Name = "VendorHead",
+        Size = Vector3.new(2.4, 2, 2.2),
+        Position = pos + Vector3.new(0, 7, 0),
+        Color = Color3.fromRGB(75, 75, 105), Material = Enum.Material.Metal,
+    })
+    -- glowing visor
+    part(model, {
+        Name = "VendorVisor",
+        Size = Vector3.new(2.0, 0.7, 0.4),
+        Position = pos + Vector3.new(0, 7.1, -1.05),
+        Color = PURPLE, Material = Enum.Material.Neon, CanCollide = false,
+    })
+    -- shoulders/arms
+    for _, sx in ipairs({ -2.3, 2.3 }) do
+        part(model, {
+            Name = "VendorArm",
+            Size = Vector3.new(0.9, 3.4, 0.9),
+            Position = pos + Vector3.new(sx, 4, 0),
+            Color = Color3.fromRGB(55, 55, 80), Material = Enum.Material.Metal,
+        })
+    end
+
+    local light = Instance.new("PointLight")
+    light.Color = PURPLE; light.Range = 26; light.Brightness = 4
+    light.Parent = torso
+
+    -- floating holographic sign
+    local sign = part(model, {
+        Name = "ExchangeSign",
+        Size = Vector3.new(0.5, 0.5, 0.5),
+        Position = pos + Vector3.new(0, 11, 0),
+        Transparency = 1, CanCollide = false,
+    })
+    local bb = billboard(sign, 0, 72)
+    bb.MaxDistance = 120
+    local t1 = Instance.new("TextLabel")
+    t1.Size = UDim2.new(1, 0, 0.55, 0); t1.BackgroundTransparency = 1
+    t1.Text = "💹 GEM EXCHANGE"; t1.Font = Enum.Font.GothamBold; t1.TextScaled = true
+    t1.TextColor3 = PURPLE; t1.TextStrokeTransparency = 0.3; t1.Parent = bb
+    local t2 = Instance.new("TextLabel")
+    t2.Size = UDim2.new(1, 0, 0.4, 0); t2.Position = UDim2.new(0, 0, 0.58, 0)
+    t2.BackgroundTransparency = 1; t2.Text = "click to sell gems"
+    t2.Font = Enum.Font.Gotham; t2.TextScaled = true
+    t2.TextColor3 = Color3.fromRGB(210, 200, 225); t2.TextStrokeTransparency = 0.4; t2.Parent = bb
+
+    model.PrimaryPart = desk
+    model.Parent = workspace
+    return model
+end
+
 -- ── Lighting polish ─────────────────────────────────────────────────────────
 local function polishLighting()
     Lighting.ClockTime         = 18.5            -- dusk so neon pops
@@ -328,7 +425,7 @@ local signLabels = {}  -- plotIndex -> SurfaceGui TextLabel
 
 function WorldBuilder.Build()
     -- Idempotent: clear anything we built before
-    for _, name in ipairs({ "Plots", "GemNodes", "WorldGround" }) do
+    for _, name in ipairs({ "Plots", "GemNodes", "WorldGround", "GemExchange" }) do
         local existing = workspace:FindFirstChild(name)
         if existing then existing:Destroy() end
     end
@@ -360,6 +457,7 @@ function WorldBuilder.Build()
         plot.PrimaryPart = spawn
     end
 
+    buildGemExchange()
     polishLighting()
     return plotsFolder
 end

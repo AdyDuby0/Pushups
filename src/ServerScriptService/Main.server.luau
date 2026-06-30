@@ -13,6 +13,7 @@ local GearManager         = require(Mods:WaitForChild("GearManager"))
 local PotionManager       = require(Mods:WaitForChild("PotionManager"))
 local MonetizationManager = require(Mods:WaitForChild("MonetizationManager"))
 local PowerCoreModel      = require(Mods:WaitForChild("PowerCoreModel"))
+local GemMarketManager    = require(Mods:WaitForChild("GemMarketManager"))
 local WorldBuilder        = require(Mods:WaitForChild("WorldBuilder"))
 local GameConfig          = require(ReplicatedStorage.Config.GameConfig)
 
@@ -40,6 +41,7 @@ local R = {
     Notification      = ev("Notification"),
     UpdateLeaderboard = ev("UpdateLeaderboard"),
     UpdatePotions     = ev("UpdatePotions"),
+    UpdateGemMarket   = ev("UpdateGemMarket"),
 }
 
 local RFn = {
@@ -60,6 +62,7 @@ local RFn = {
     UsePotion           = fn("UsePotion"),
     ConvertGems         = fn("ConvertGems"),
     BuyPremiumBoost     = fn("BuyPremiumBoost"),
+    SellToNPC           = fn("SellToNPC"),
 }
 
 -- ── Init ──────────────────────────────────────────────────────────────────────
@@ -72,6 +75,7 @@ MarketManager.Init(DataManager, R)
 GearManager.Init(DataManager)
 PotionManager.Init(DataManager)
 MonetizationManager.Init(DataManager, R)
+GemMarketManager.Init(DataManager, R)
 PowerCoreModel.StartAnimation()
 
 -- ── Remote handlers ───────────────────────────────────────────────────────────
@@ -95,6 +99,7 @@ RFn.GetInitialData.OnServerInvoke = function(player)
         maxSlots        = PowerCoreManager.GetMaxSlots(player),
         coreUpgrades    = PowerCoreManager.GetCoreUpgradeInfo(player),
         listings        = MarketManager.GetAll(),
+        gemMarket       = GemMarketManager.GetPrices(),
     }
 end
 
@@ -122,6 +127,10 @@ end
 
 RFn.BuyListing.OnServerInvoke = function(p, id, qty)
     return MarketManager.Buy(p, id, qty)
+end
+
+RFn.SellToNPC.OnServerInvoke = function(p, gemType, qty)
+    return GemMarketManager.Sell(p, gemType, qty)
 end
 
 RFn.StartExtraction.OnServerInvoke = function(p, node)
@@ -271,6 +280,7 @@ end)
 -- ── Game loops ────────────────────────────────────────────────────────────────
 
 PowerCoreManager.StartIncomeLoop()
+GemMarketManager.StartLoop()
 
 task.spawn(function()
     while true do
