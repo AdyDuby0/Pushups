@@ -70,129 +70,144 @@ function PowerCoreModel.Spawn(player, plot)
     local model = Instance.new("Model")
     model.Name = "Core_" .. player.UserId
 
-    local DARK   = Color3.fromRGB(22, 12, 44)
-    local FRAME  = Color3.fromRGB(90, 60, 160)
-    local GLOW1  = Color3.fromRGB(160, 80, 255)
-    local GLOW2  = Color3.fromRGB(80, 200, 255)
+    local GLASS    = Color3.fromRGB(208, 226, 236)
+    local FRAME    = Color3.fromRGB(140, 143, 152)
+    local BASEGREY = Color3.fromRGB(72, 74, 86)
+    local CRYST_T  = Color3.fromRGB(255, 150, 60)    -- warm top
+    local CRYST_B  = Color3.fromRGB(90, 200, 255)    -- cyan bottom
 
-    -- ── Hexagonal base ────────────────────────────────────────────────────────
-    local HEX_R     = 3.8   -- radius to hex corner
-    local BASE_Y    = 0.3   -- base plate height (half)
-    local PANEL_H   = 0.5   -- panel height
-    local PILLAR_H  = 5.5   -- cage pillar height above base
+    local N        = 8                  -- octagon
+    local STEP     = (2 * math.pi) / N
+    local DRUM_R   = 3.0                 -- glass octagon radius
+    local DRUM_H   = 4.2                 -- glass drum height
+    local DRUM_Y0  = 1.0                 -- glass drum starts above the grey base
+    local CAGE_R   = 3.35
+    local TOP_Y    = DRUM_Y0 + DRUM_H
+    local SIDE_W   = 2 * DRUM_R * math.tan(math.pi / N) + 0.12
 
-    -- Flat hexagonal floor: 6 trapezoidal panels arranged around center
-    for i = 0, 5 do
-        local angle = math.rad(i * 60)
-        local midA  = math.rad(i * 60 + 30)
-        local cx    = math.cos(midA) * HEX_R * 0.62
-        local cz    = math.sin(midA) * HEX_R * 0.62
+    -- panel facing outward at local angle `a` (built in the plot-local frame)
+    local function outwardPanel(cx, cy, cz, a, w, h, depth, color, mat, trans, target)
+        local tgt = target or Vector3.new(cx + math.cos(a), cy, cz + math.sin(a))
         makePart(model, {
-            Size     = Vector3.new(HEX_R * 0.98, PANEL_H, HEX_R * 0.58),
-            CFrame   = baseCF * CFrame.new(cx, BASE_Y, cz) * CFrame.Angles(0, -midA, 0),
-            Color    = DARK,
-            Material = Enum.Material.SmoothPlastic,
+            Size     = Vector3.new(w, h, depth),
+            CFrame   = baseCF * CFrame.new(Vector3.new(cx, cy, cz), tgt),
+            Color    = color, Material = mat, Transparency = trans or 0, CanCollide = false,
         })
     end
 
-    -- Thin center disk (glowing)
+    -- Grey faceted base the dome sits on
     makePart(model, {
         Shape    = Enum.PartType.Cylinder,
-        Size     = Vector3.new(0.18, HEX_R * 1.85, HEX_R * 1.85),
-        CFrame   = baseCF * CFrame.new(0, BASE_Y + PANEL_H * 0.5, 0) * CFrame.Angles(0, 0, math.rad(90)),
-        Color    = GLOW1,
-        Material = Enum.Material.Neon,
+        Size     = Vector3.new(DRUM_Y0, DRUM_R * 2.1, DRUM_R * 2.1),
+        CFrame   = baseCF * CFrame.new(0, DRUM_Y0 / 2, 0) * CFrame.Angles(0, 0, math.rad(90)),
+        Color    = BASEGREY, Material = Enum.Material.SmoothPlastic,
     })
 
-    -- 6 corner pillars + edge rods at base level
-    local pillarTops = {}   -- Vector3 positions, for cage ring
-    for i = 0, 5 do
-        local angle = math.rad(i * 60)
-        local px = math.cos(angle) * HEX_R
-        local pz = math.sin(angle) * HEX_R
-        local basePos  = origin + Vector3.new(px, 0, pz)
-        local topPos   = origin + Vector3.new(px, PILLAR_H, pz)
-        pillarTops[i + 1] = topPos
+    -- 8 glass panels forming the octagon drum
+    for i = 0, N - 1 do
+        local a = i * STEP + STEP / 2          -- edge midpoints
+        outwardPanel(math.cos(a) * DRUM_R, DRUM_Y0 + DRUM_H / 2, math.sin(a) * DRUM_R,
+            a, SIDE_W, DRUM_H, 0.12, GLASS, Enum.Material.Glass, 0.55)
+    end
 
-        -- Pillar
+    -- Faceted glass roof: 8 slanted panels converging to a cap
+    local ROOF_H   = 1.8
+    local roofTopR = DRUM_R * 0.32
+    local roofLen  = math.sqrt(ROOF_H ^ 2 + (DRUM_R - roofTopR) ^ 2)
+    for i = 0, N - 1 do
+        local a   = i * STEP + STEP / 2
+        local rmid = (DRUM_R + roofTopR) / 2
+        local cx, cz = math.cos(a) * rmid, math.sin(a) * rmid
+        outwardPanel(cx, TOP_Y + ROOF_H / 2, cz, a, SIDE_W * 0.82, roofLen, 0.12,
+            GLASS, Enum.Material.Glass, 0.5, Vector3.new(cx + math.cos(a), TOP_Y, cz + math.sin(a)))
+    end
+    -- top cap nub
+    makePart(model, {
+        Size = Vector3.new(0.9, 0.9, 0.9),
+        CFrame = baseCF * CFrame.new(0, TOP_Y + ROOF_H + 0.3, 0),
+        Color = FRAME, Material = Enum.Material.Metal,
+    })
+
+    -- Cage: 8 chunky vertical struts + bottom & top octagon rings
+    for i = 0, N - 1 do
+        local a = i * STEP                      -- octagon corners (between panels)
+        local cx, cz = math.cos(a) * CAGE_R, math.sin(a) * CAGE_R
         makePart(model, {
-            Shape    = Enum.PartType.Cylinder,
-            Size     = Vector3.new(PILLAR_H, 0.22, 0.22),
-            CFrame   = CFrame.new(basePos + Vector3.new(0, PILLAR_H / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-            Color    = FRAME,
-            Material = Enum.Material.Metal,
+            Size = Vector3.new(0.55, TOP_Y, 0.55),
+            CFrame = baseCF * CFrame.new(cx, TOP_Y / 2, cz),
+            Color = FRAME, Material = Enum.Material.Metal,
         })
-
-        -- Base ring connecting adjacent pillar bottoms
-        local nextAngle = math.rad((i + 1) * 60)
-        local nx = math.cos(nextAngle) * HEX_R
-        local nz = math.sin(nextAngle) * HEX_R
-        rod(model,
-            CFrame.new(origin + Vector3.new(px, BASE_Y, pz)),
-            CFrame.new(origin + Vector3.new(nx, BASE_Y, nz)),
-            0.18, FRAME)
+    end
+    for i = 0, N - 1 do
+        local a1, a2 = i * STEP, ((i + 1) % N) * STEP
+        for _, y in ipairs({ 0.45, TOP_Y }) do
+            rod(model,
+                baseCF * CFrame.new(math.cos(a1) * CAGE_R, y, math.sin(a1) * CAGE_R),
+                baseCF * CFrame.new(math.cos(a2) * CAGE_R, y, math.sin(a2) * CAGE_R),
+                0.4, FRAME)
+        end
     end
 
-    -- Cage top ring
-    for i = 1, 6 do
-        local a = pillarTops[i]
-        local b = pillarTops[(i % 6) + 1]
-        rod(model, CFrame.new(a), CFrame.new(b), 0.18, FRAME)
+    -- RGB neon pipe rings around the base on the platform
+    local ringColors = {
+        Color3.fromRGB(60, 120, 255), Color3.fromRGB(60, 230, 90), Color3.fromRGB(255, 60, 60),
+    }
+    for ri, col in ipairs(ringColors) do
+        local rr = CAGE_R + 0.3 + (ri - 1) * 0.45
+        for i = 0, N - 1 do
+            local a1, a2 = i * STEP, ((i + 1) % N) * STEP
+            rod(model,
+                baseCF * CFrame.new(math.cos(a1) * rr, 0.28, math.sin(a1) * rr),
+                baseCF * CFrame.new(math.cos(a2) * rr, 0.28, math.sin(a2) * rr),
+                0.22, col, Enum.Material.Neon)
+        end
     end
 
-    -- 6 diagonal braces: mid-pillar → center-top of cage
-    local cageCenter = origin + Vector3.new(0, PILLAR_H + 0.5, 0)
-    for i = 0, 5 do
-        local angle = math.rad(i * 60 + 30)
-        local mx = math.cos(angle) * HEX_R * 0.55
-        local mz = math.sin(angle) * HEX_R * 0.55
-        rod(model,
-            CFrame.new(pillarTops[i + 1]),
-            CFrame.new(cageCenter + Vector3.new(mx, 0, mz)),
-            0.14, GLOW1, Enum.Material.Neon)
+    -- Two metallic elbow pipes at the front-left
+    for k = 0, 1 do
+        local bz = -1.0 - k * 1.1
+        makePart(model, {
+            Shape = Enum.PartType.Cylinder, Size = Vector3.new(2.4, 0.5, 0.5),
+            CFrame = baseCF * CFrame.new(-DRUM_R - 0.8, 1.3, bz) * CFrame.Angles(0, 0, math.rad(90)),
+            Color = Color3.fromRGB(150, 150, 165), Material = Enum.Material.Metal,
+        })
+        makePart(model, {
+            Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.8, 0.5, 0.5),
+            CFrame = baseCF * CFrame.new(-DRUM_R - 1.6, 2.4, bz),
+            Color = Color3.fromRGB(150, 150, 165), Material = Enum.Material.Metal,
+        })
     end
 
-    -- ── Double bi-pyramid crystal ─────────────────────────────────────────────
-    -- Two elongated spheres (SpecialMesh.Sphere) sharing an equator:
-    --   upper half: tall and narrow, glowing purple
-    --   lower half: same but below the equator, glowing cyan
-    -- Together they form the silhouette of an octahedron (double diamond).
+    -- ── Double bi-pyramid crystal (floating inside the glass) ──────────────────
+    local EQUATOR_Y = DRUM_Y0 + DRUM_H * 0.5
+    local DIA_W, DIA_H = 2.0, 2.4
 
-    local EQUATOR_Y = PILLAR_H * 0.62 + 0.5   -- y offset above base for equator center
-    local DIA_W, DIA_H = 2.2, 3.4             -- width and half-height of each diamond
-
-    -- Upper diamond half
     local topCrystal = makePart(model, {
         Size     = Vector3.new(DIA_W, DIA_H, DIA_W),
         CFrame   = baseCF * CFrame.new(0, EQUATOR_Y + DIA_H * 0.38, 0),
-        Color    = GLOW1,
-        Material = Enum.Material.Neon,
+        Color    = CRYST_T, Material = Enum.Material.Neon,
     })
     local topMesh = Instance.new("SpecialMesh")
     topMesh.MeshType = Enum.MeshType.Sphere
-    topMesh.Scale    = Vector3.new(1, 1, 1)
     topMesh.Parent   = topCrystal
 
-    -- Lower diamond half (slightly smaller, cyan accent)
     local botCrystal = makePart(model, {
-        Size     = Vector3.new(DIA_W, DIA_H * 0.8, DIA_W),
-        CFrame   = baseCF * CFrame.new(0, EQUATOR_Y - DIA_H * 0.28, 0),
-        Color    = GLOW2,
-        Material = Enum.Material.Neon,
+        Size     = Vector3.new(DIA_W, DIA_H * 0.85, DIA_W),
+        CFrame   = baseCF * CFrame.new(0, EQUATOR_Y - DIA_H * 0.3, 0),
+        Color    = CRYST_B, Material = Enum.Material.Neon,
     })
     local botMesh = Instance.new("SpecialMesh")
     botMesh.MeshType = Enum.MeshType.Sphere
-    botMesh.Scale    = Vector3.new(1, 1, 1)
     botMesh.Parent   = botCrystal
 
-    -- Central equator ring (glows where the two halves meet)
+    -- bright white core where the halves meet
     makePart(model, {
         Shape    = Enum.PartType.Cylinder,
         Size     = Vector3.new(0.25, DIA_W * 1.05, DIA_W * 1.05),
         CFrame   = baseCF * CFrame.new(0, EQUATOR_Y, 0) * CFrame.Angles(0, 0, math.rad(90)),
-        Color    = Color3.fromRGB(255, 255, 255),
-        Material = Enum.Material.Neon,
+        Color    = Color3.fromRGB(255, 255, 255), Material = Enum.Material.Neon,
     })
+    local GLOW1 = CRYST_T   -- used by the light/billboard below
 
     -- ── Crystal anchor + billboard tag ────────────────────────────────────────
     -- The "crystal" anchor is a transparent sphere at equator height tagged with
