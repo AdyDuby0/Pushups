@@ -163,18 +163,35 @@ function PowerCoreModel.Spawn(player, plot)
         end
     end
 
-    -- Two metallic elbow pipes at the front-left
+    -- Two metallic elbow pipes that run down the side to the floor
+    local PIPE = Color3.fromRGB(150, 150, 165)
     for k = 0, 1 do
-        local bz = -1.0 - k * 1.1
+        local bz = -1.0 - k * 1.2
+        local px = -(DRUM_R + 1.8)
+        local elbowY = 2.4
+        -- vertical leg down to the floor (y 0 .. elbowY)
         makePart(model, {
-            Shape = Enum.PartType.Cylinder, Size = Vector3.new(2.4, 0.5, 0.5),
-            CFrame = baseCF * CFrame.new(-DRUM_R - 0.8, 1.3, bz) * CFrame.Angles(0, 0, math.rad(90)),
-            Color = Color3.fromRGB(150, 150, 165), Material = Enum.Material.Metal,
+            Shape = Enum.PartType.Cylinder, Size = Vector3.new(elbowY, 0.55, 0.55),
+            CFrame = baseCF * CFrame.new(px, elbowY / 2, bz) * CFrame.Angles(0, 0, math.rad(90)),
+            Color = PIPE, Material = Enum.Material.Metal,
         })
+        -- rounded elbow joint
         makePart(model, {
-            Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.8, 0.5, 0.5),
-            CFrame = baseCF * CFrame.new(-DRUM_R - 1.6, 2.4, bz),
-            Color = Color3.fromRGB(150, 150, 165), Material = Enum.Material.Metal,
+            Shape = Enum.PartType.Ball, Size = Vector3.new(0.62, 0.62, 0.62),
+            CFrame = baseCF * CFrame.new(px, elbowY, bz),
+            Color = PIPE, Material = Enum.Material.Metal,
+        })
+        -- horizontal run into the dome base
+        makePart(model, {
+            Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.9, 0.55, 0.55),
+            CFrame = baseCF * CFrame.new((px - DRUM_R) / 2, elbowY, bz),
+            Color = PIPE, Material = Enum.Material.Metal,
+        })
+        -- foot flange on the floor
+        makePart(model, {
+            Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 1.2, 1.2),
+            CFrame = baseCF * CFrame.new(px, 0.16, bz) * CFrame.Angles(0, 0, math.rad(90)),
+            Color = Color3.fromRGB(90, 92, 104), Material = Enum.Material.Metal,
         })
     end
 

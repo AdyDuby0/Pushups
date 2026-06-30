@@ -32,6 +32,7 @@ local RF = {
     SetDrillGem       = RemotesFolder:WaitForChild("SetDrillGem"),
     UpgradeDrillDepth = RemotesFolder:WaitForChild("UpgradeDrillDepth"),
     GetDrillInfo      = RemotesFolder:WaitForChild("GetDrillInfo"),
+    AdminAction       = RemotesFolder:WaitForChild("AdminAction"),
     BuyCoreUpgrade  = RemotesFolder:WaitForChild("BuyCoreUpgrade"),
     CraftGear       = RemotesFolder:WaitForChild("CraftGear"),
     EquipGear       = RemotesFolder:WaitForChild("EquipGear"),
@@ -51,6 +52,7 @@ local CraftingUI       = require(Modules:WaitForChild("CraftingUI"))
 local ShopUI           = require(Modules:WaitForChild("ShopUI"))
 local GemMarketUI      = require(Modules:WaitForChild("GemMarketUI"))
 local DrillUI          = require(Modules:WaitForChild("DrillUI"))
+local AdminUI          = require(Modules:WaitForChild("AdminUI"))
 local TutorialManager  = require(Modules:WaitForChild("TutorialManager"))
 
 if not player.Character then player.CharacterAdded:Wait() end
@@ -72,6 +74,9 @@ CraftingUI.Init(playerGui, initData, RF)
 ShopUI.Init(playerGui, initData, RF)
 GemMarketUI.Init(playerGui, initData, RF)
 DrillUI.Init(playerGui, initData, RF)
+if initData.isAdmin then
+    AdminUI.Init(playerGui, initData, RF)
+end
 TutorialManager.Start(playerGui, initData)
 
 -- ── Server event hooks ────────────────────────────────────────────────────────

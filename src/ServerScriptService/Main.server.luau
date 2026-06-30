@@ -17,6 +17,16 @@ local GemMarketManager    = require(Mods:WaitForChild("GemMarketManager"))
 local DrillManager        = require(Mods:WaitForChild("DrillManager"))
 local WorldBuilder        = require(Mods:WaitForChild("WorldBuilder"))
 local GameConfig          = require(ReplicatedStorage.Config.GameConfig)
+local GemTypes            = require(ReplicatedStorage.Config.GemTypes)
+
+local RunService = game:GetService("RunService")
+
+-- Admin access: place owner, Studio, or any UserId listed in GameConfig.ADMIN_IDS
+local function isAdmin(player)
+    if RunService:IsStudio() then return true end
+    if game.CreatorType == Enum.CreatorType.User and player.UserId == game.CreatorId then return true end
+    return GameConfig.ADMIN_IDS[player.UserId] == true
+end
 
 -- Build the playable world (plots, fences, stations, gem nodes, lighting)
 -- before anything tries to find them.
@@ -59,6 +69,7 @@ local RFn = {
     SetDrillGem     = fn("SetDrillGem"),
     UpgradeDrillDepth = fn("UpgradeDrillDepth"),
     GetDrillInfo    = fn("GetDrillInfo"),
+    AdminAction     = fn("AdminAction"),
     BuyCoreUpgrade  = fn("BuyCoreUpgrade"),
     CraftGear       = fn("CraftGear"),
     EquipGear       = fn("EquipGear"),
@@ -107,6 +118,7 @@ RFn.GetInitialData.OnServerInvoke = function(player)
         listings        = MarketManager.GetAll(),
         gemMarket       = GemMarketManager.GetPrices(),
         drill           = DrillManager.GetInfo(player),
+        isAdmin         = isAdmin(player),
     }
 end
 
@@ -179,6 +191,43 @@ end
 
 RFn.GetDrillInfo.OnServerInvoke = function(p)
     return DrillManager.GetInfo(p)
+end
+
+RFn.AdminAction.OnServerInvoke = function(p, action, a, b)
+    if not isAdmin(p) then return false, "Not authorized" end
+    local data = DataManager.Get(p)
+    if not data then return false, "No data" end
+
+    if action == "setCredits" then
+        data.credits = math.max(0, math.floor(tonumber(a) or 0))
+    elseif action == "addCredits" then
+        data.credits = math.max(0, data.credits + (tonumber(a) or 0))
+    elseif action == "setGemCurrency" then
+        data.gemCurrency = math.max(0, math.floor(tonumber(a) or 0))
+    elseif action == "addGemCurrency" then
+        data.gemCurrency = math.max(0, (data.gemCurrency or 0) + (tonumber(a) or 0))
+    elseif action == "setGem" then
+        local amt = math.floor(tonumber(b) or 0)
+        if GemTypes[a] then
+            if amt <= 0 then data.gems[a] = nil else data.gems[a] = amt end
+        end
+    elseif action == "maxGems" then
+        for gt in pairs(GemTypes) do data.gems[gt] = GameConfig.INVENTORY_MAX end
+    elseif action == "maxDrill" then
+        data.drill = data.drill or { gemType = "Crystite", depth = 1 }
+        data.drill.depth = 6
+    else
+        return false, "Unknown action"
+    end
+
+    DataManager.Save(p)
+    R.UpdateHUD:FireClient(p, {
+        credits     = data.credits,
+        gemCurrency = data.gemCurrency,
+        incomeRate  = PowerCoreManager.GetIncomeRate(p),
+    })
+    R.UpdateInventory:FireClient(p, data.gems)
+    return true, { credits = data.credits, gemCurrency = data.gemCurrency }
 end
 
 R.Teleport.OnServerEvent:Connect(function(player, target)
