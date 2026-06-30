@@ -317,6 +317,7 @@ local function ensureLeaderstats(player)
     if not ls then
         ls = Instance.new("Folder"); ls.Name = "leaderstats"; ls.Parent = player
         local lvl = Instance.new("IntValue"); lvl.Name = "Core Lv"; lvl.Value = 1; lvl.Parent = ls
+        local inc = Instance.new("StringValue"); inc.Name = "Income/s"; inc.Value = "0"; inc.Parent = ls
         local cr  = Instance.new("StringValue"); cr.Name = "Credits"; cr.Value = "0"; cr.Parent = ls
     end
     return ls
@@ -369,8 +370,10 @@ task.spawn(function()
             local ls   = player:FindFirstChild("leaderstats")
             if data and ls then
                 local lvl = ls:FindFirstChild("Core Lv")
+                local inc = ls:FindFirstChild("Income/s")
                 local cr  = ls:FindFirstChild("Credits")
                 if lvl then lvl.Value = data.coreLevel end
+                if inc then inc.Value = fmtCredits(PowerCoreManager.GetIncomeRate(player)) .. "/s" end
                 if cr  then cr.Value  = fmtCredits(data.credits) end
             end
         end
