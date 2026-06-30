@@ -205,11 +205,12 @@ function PowerCoreModel.Spawn(player, plot)
     crystal.Name = "PowerCore"
     crystal:SetAttribute("OwnerUserId", player.UserId)
 
-    -- Point light at the equator
+    -- Point light at the equator (kept modest — one soft light per core so the
+    -- scene stays clean now that node/station lights are gone)
     local light = Instance.new("PointLight")
     light.Color      = GLOW1
-    light.Range      = 22
-    light.Brightness = 5
+    light.Range      = 15
+    light.Brightness = 1.8
     light.Parent     = crystal
 
     -- Billboard "walk up to open" hint

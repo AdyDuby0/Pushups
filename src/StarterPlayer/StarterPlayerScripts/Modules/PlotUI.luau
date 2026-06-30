@@ -19,8 +19,12 @@ local refreshSlots, refreshGems, refreshUpgrades, updateUpgradeAffordability
 
 local function fmt(n)
     n = math.floor(n)
-    if n >= 1e6 then return string.format("%.2fM", n/1e6)
-    elseif n >= 1e3 then return string.format("%.1fK", n/1e3)
+    local a = math.abs(n)
+    if a >= 1e15 then return string.format("%.1fQ", n/1e15)
+    elseif a >= 1e12 then return string.format("%.1fT", n/1e12)
+    elseif a >= 1e9  then return string.format("%.1fB", n/1e9)
+    elseif a >= 1e6  then return string.format("%.1fM", n/1e6)
+    elseif a >= 1e3  then return string.format("%.1fK", n/1e3)
     else return tostring(n) end
 end
 
@@ -311,7 +315,7 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
     -- Panel
     local panel = Instance.new("Frame")
     panel.Name            = "CorePanel"
-    panel.Size            = UDim2.new(0, 360, 0, 660)
+    panel.Size            = UDim2.new(0, 360, 0, 620)
     panel.Position        = UDim2.new(0, 8, 0, 110)
     panel.BackgroundColor3 = Color3.fromRGB(8, 8, 22)
     panel.BackgroundTransparency = 0.08
@@ -339,7 +343,7 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
     coreTitle.Parent               = header
 
     coreMult = Instance.new("TextLabel")
-    coreMult.Size                 = UDim2.new(1, -16, 0, 22)
+    coreMult.Size                 = UDim2.new(1, -16, 0, 20)
     coreMult.Position             = UDim2.new(0, 8, 0, 44)
     coreMult.BackgroundTransparency = 1
     coreMult.TextColor3           = Color3.fromRGB(130, 190, 255)
@@ -348,97 +352,107 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
     coreMult.TextXAlignment       = Enum.TextXAlignment.Left
     coreMult.Parent               = panel
 
-    -- Slots label
-    local slotsLbl = Instance.new("TextLabel")
-    slotsLbl.Size                 = UDim2.new(1, -8, 0, 20)
-    slotsLbl.Position             = UDim2.new(0, 8, 0, 68)
-    slotsLbl.BackgroundTransparency = 1
-    slotsLbl.Text                 = "GEM SLOTS"
-    slotsLbl.TextColor3           = Color3.fromRGB(160, 160, 160)
-    slotsLbl.Font                 = Enum.Font.GothamBold
-    slotsLbl.TextScaled           = true
-    slotsLbl.TextXAlignment       = Enum.TextXAlignment.Left
-    slotsLbl.Parent               = panel
+    -- ── Tab bar ────────────────────────────────────────────────────────────────
+    local tabBar = Instance.new("Frame")
+    tabBar.Size = UDim2.new(1, -8, 0, 32)
+    tabBar.Position = UDim2.new(0, 4, 0, 66)
+    tabBar.BackgroundTransparency = 1
+    tabBar.Parent = panel
 
-    -- Slots grid frame
-    slotsGrid = Instance.new("Frame")
-    slotsGrid.Name            = "SlotsGrid"
-    slotsGrid.Size            = UDim2.new(1, -8, 0, 176)
-    slotsGrid.Position        = UDim2.new(0, 4, 0, 90)
-    slotsGrid.BackgroundTransparency = 1
-    slotsGrid.Parent          = panel
+    local slotsTabBtn, upgTabBtn
+    local function makeTab(label, xPos)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.49, 0, 1, 0)
+        btn.Position = UDim2.new(xPos, 0, 0, 0)
+        btn.BackgroundColor3 = Color3.fromRGB(25, 22, 48)
+        btn.BorderSizePixel = 0
+        btn.Text = label
+        btn.TextColor3 = Color3.fromRGB(200, 200, 220)
+        btn.Font = Enum.Font.GothamBold
+        btn.TextScaled = true
+        btn.Parent = tabBar
+        corner(btn, 4)
+        return btn
+    end
+    slotsTabBtn = makeTab("💎 Slots", 0)
+    upgTabBtn   = makeTab("⚡ Upgrades", 0.51)
+
+    -- ── Content frames (one per tab) ─────────────────────────────────────────────
+    local CONTENT_TOP = 102
+    local slotsTab = Instance.new("Frame")
+    slotsTab.Size = UDim2.new(1, -8, 1, -(CONTENT_TOP + 8))
+    slotsTab.Position = UDim2.new(0, 4, 0, CONTENT_TOP)
+    slotsTab.BackgroundTransparency = 1
+    slotsTab.Parent = panel
+
+    local upgradesTab = Instance.new("Frame")
+    upgradesTab.Size = UDim2.new(1, -8, 1, -(CONTENT_TOP + 8))
+    upgradesTab.Position = UDim2.new(0, 4, 0, CONTENT_TOP)
+    upgradesTab.BackgroundTransparency = 1
+    upgradesTab.Visible = false
+    upgradesTab.Parent = panel
+
+    -- ── Slots tab: gem slots (scrollable grid) + inventory ───────────────────────
+    local slotsLbl = Instance.new("TextLabel")
+    slotsLbl.Size = UDim2.new(1, 0, 0, 18); slotsLbl.Position = UDim2.new(0, 4, 0, 0)
+    slotsLbl.BackgroundTransparency = 1; slotsLbl.Text = "GEM SLOTS"
+    slotsLbl.TextColor3 = Color3.fromRGB(160, 160, 160); slotsLbl.Font = Enum.Font.GothamBold
+    slotsLbl.TextScaled = true; slotsLbl.TextXAlignment = Enum.TextXAlignment.Left
+    slotsLbl.Parent = slotsTab
+
+    slotsGrid = Instance.new("ScrollingFrame")
+    slotsGrid.Name = "SlotsGrid"
+    slotsGrid.Size = UDim2.new(1, 0, 0, 250)
+    slotsGrid.Position = UDim2.new(0, 0, 0, 22)
+    slotsGrid.BackgroundColor3 = Color3.fromRGB(12, 12, 26)
+    slotsGrid.BackgroundTransparency = 0.4
+    slotsGrid.BorderSizePixel = 0
+    slotsGrid.ScrollBarThickness = 4
+    slotsGrid.CanvasSize = UDim2.new(0, 0, 0, 0)
+    slotsGrid.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    slotsGrid.Parent = slotsTab
+    corner(slotsGrid, 6)
 
     local gridLayout = Instance.new("UIGridLayout")
     gridLayout.CellSize    = UDim2.new(0, 78, 0, 78)
     gridLayout.CellPadding = UDim2.new(0, 5, 0, 5)
     gridLayout.Parent      = slotsGrid
+    local gridPad = Instance.new("UIPadding")
+    gridPad.PaddingTop = UDim.new(0, 5); gridPad.PaddingLeft = UDim.new(0, 5)
+    gridPad.Parent = slotsGrid
 
-    -- Inventory label
     local invLbl = Instance.new("TextLabel")
-    invLbl.Size                 = UDim2.new(1, -8, 0, 20)
-    invLbl.Position             = UDim2.new(0, 8, 0, 272)
-    invLbl.BackgroundTransparency = 1
-    invLbl.Text                 = "INVENTORY"
-    invLbl.TextColor3           = Color3.fromRGB(160, 160, 160)
-    invLbl.Font                 = Enum.Font.GothamBold
-    invLbl.TextScaled           = true
-    invLbl.TextXAlignment       = Enum.TextXAlignment.Left
-    invLbl.Parent               = panel
+    invLbl.Size = UDim2.new(1, 0, 0, 18); invLbl.Position = UDim2.new(0, 4, 0, 278)
+    invLbl.BackgroundTransparency = 1; invLbl.Text = "INVENTORY"
+    invLbl.TextColor3 = Color3.fromRGB(160, 160, 160); invLbl.Font = Enum.Font.GothamBold
+    invLbl.TextScaled = true; invLbl.TextXAlignment = Enum.TextXAlignment.Left
+    invLbl.Parent = slotsTab
 
-    -- Gems scrolling frame
     gemsScroll = Instance.new("ScrollingFrame")
-    gemsScroll.Size              = UDim2.new(1, -8, 0, 108)
-    gemsScroll.Position          = UDim2.new(0, 4, 0, 294)
+    gemsScroll.Size = UDim2.new(1, 0, 1, -300)
+    gemsScroll.Position = UDim2.new(0, 0, 0, 300)
     gemsScroll.BackgroundTransparency = 1
-    gemsScroll.BorderSizePixel   = 0
+    gemsScroll.BorderSizePixel = 0
     gemsScroll.ScrollBarThickness = 4
-    gemsScroll.CanvasSize        = UDim2.new(0, 0, 0, 0)
+    gemsScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     gemsScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    gemsScroll.Parent            = panel
+    gemsScroll.Parent = slotsTab
 
     local gemsList = Instance.new("UIListLayout")
-    gemsList.Padding   = UDim.new(0, 4)
-    gemsList.Parent    = gemsScroll
+    gemsList.Padding = UDim.new(0, 4)
+    gemsList.Parent = gemsScroll
 
-    -- Core upgrades label
-    local upgLbl = Instance.new("TextLabel")
-    upgLbl.Size                 = UDim2.new(1, -8, 0, 20)
-    upgLbl.Position             = UDim2.new(0, 8, 0, 408)
-    upgLbl.BackgroundTransparency = 1
-    upgLbl.Text                 = "⚡ CORE & ⛏ DRILL UPGRADES"
-    upgLbl.TextColor3           = Color3.fromRGB(255, 210, 90)
-    upgLbl.Font                 = Enum.Font.GothamBold
-    upgLbl.TextScaled           = true
-    upgLbl.TextXAlignment       = Enum.TextXAlignment.Left
-    upgLbl.Parent               = panel
-
-    -- Core/drill upgrades container (scrollable — income + drill rows)
-    upgradesFrame = Instance.new("ScrollingFrame")
-    upgradesFrame.Name            = "UpgradesFrame"
-    upgradesFrame.Size            = UDim2.new(1, -8, 0, 156)
-    upgradesFrame.Position        = UDim2.new(0, 4, 0, 430)
-    upgradesFrame.BackgroundTransparency = 1
-    upgradesFrame.BorderSizePixel = 0
-    upgradesFrame.ScrollBarThickness = 4
-    upgradesFrame.CanvasSize        = UDim2.new(0, 0, 0, 0)
-    upgradesFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    upgradesFrame.Parent          = panel
-
-    local upgLayout = Instance.new("UIListLayout")
-    upgLayout.Padding   = UDim.new(0, 4)
-    upgLayout.Parent    = upgradesFrame
-
-    -- Upgrade button
+    -- ── Upgrades tab: core level + repeatable core/drill upgrades ─────────────────
     upgradeBtn = Instance.new("TextButton")
-    upgradeBtn.Name            = "UpgradeBtn"
-    upgradeBtn.Size            = UDim2.new(1, -16, 0, 36)
-    upgradeBtn.Position        = UDim2.new(0, 8, 1, -44)
+    upgradeBtn.Name = "UpgradeBtn"
+    upgradeBtn.Size = UDim2.new(1, 0, 0, 40)
+    upgradeBtn.Position = UDim2.new(0, 0, 0, 0)
     upgradeBtn.BackgroundColor3 = Color3.fromRGB(40, 90, 200)
     upgradeBtn.BorderSizePixel = 0
-    upgradeBtn.TextColor3      = Color3.fromRGB(255, 255, 255)
-    upgradeBtn.Font            = Enum.Font.GothamBold
-    upgradeBtn.TextScaled      = true
-    upgradeBtn.Parent          = panel
+    upgradeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    upgradeBtn.Font = Enum.Font.GothamBold
+    upgradeBtn.TextScaled = true
+    upgradeBtn.Parent = upgradesTab
     corner(upgradeBtn, 6)
 
     upgradeBtn.MouseButton1Click:Connect(function()
@@ -450,6 +464,40 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
             refreshSlots()
         end
     end)
+
+    local upgLbl = Instance.new("TextLabel")
+    upgLbl.Size = UDim2.new(1, 0, 0, 18); upgLbl.Position = UDim2.new(0, 4, 0, 48)
+    upgLbl.BackgroundTransparency = 1; upgLbl.Text = "⚡ CORE & ⛏ DRILL UPGRADES"
+    upgLbl.TextColor3 = Color3.fromRGB(255, 210, 90); upgLbl.Font = Enum.Font.GothamBold
+    upgLbl.TextScaled = true; upgLbl.TextXAlignment = Enum.TextXAlignment.Left
+    upgLbl.Parent = upgradesTab
+
+    upgradesFrame = Instance.new("ScrollingFrame")
+    upgradesFrame.Name = "UpgradesFrame"
+    upgradesFrame.Size = UDim2.new(1, 0, 1, -72)
+    upgradesFrame.Position = UDim2.new(0, 0, 0, 70)
+    upgradesFrame.BackgroundTransparency = 1
+    upgradesFrame.BorderSizePixel = 0
+    upgradesFrame.ScrollBarThickness = 4
+    upgradesFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    upgradesFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    upgradesFrame.Parent = upgradesTab
+
+    local upgLayout = Instance.new("UIListLayout")
+    upgLayout.Padding = UDim.new(0, 4)
+    upgLayout.Parent = upgradesFrame
+
+    -- ── Tab switching ────────────────────────────────────────────────────────────
+    local function showTab(which)
+        local onSlots = (which == "slots")
+        slotsTab.Visible    = onSlots
+        upgradesTab.Visible = not onSlots
+        slotsTabBtn.BackgroundColor3 = onSlots and Color3.fromRGB(45, 35, 85) or Color3.fromRGB(25, 22, 48)
+        upgTabBtn.BackgroundColor3   = onSlots and Color3.fromRGB(25, 22, 48) or Color3.fromRGB(45, 35, 85)
+    end
+    slotsTabBtn.MouseButton1Click:Connect(function() showTab("slots") end)
+    upgTabBtn.MouseButton1Click:Connect(function() showTab("upgrades") end)
+    showTab("slots")
 
     -- Toggle
     panelRef = panel

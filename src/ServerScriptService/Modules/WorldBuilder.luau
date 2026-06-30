@@ -28,10 +28,10 @@ local COL_SPACING = 80
 local ROW_SPACING = 92
 local GROUND_Y    = 0           -- top of base plates
 
-local GRASS_A = Color3.fromRGB(74, 160, 64)
-local GRASS_B = Color3.fromRGB(92, 184, 80)
-local FENCE_C = Color3.fromRGB(40, 44, 60)
-local FENCE_T = Color3.fromRGB(120, 200, 255)
+local MARBLE_A = Color3.fromRGB(240, 240, 246)   -- white marble
+local MARBLE_B = Color3.fromRGB(214, 217, 228)   -- light grey marble
+local FENCE_C  = Color3.fromRGB(40, 44, 60)
+local FENCE_T  = Color3.fromRGB(120, 200, 255)
 
 -- Plot center for index 1..6 (3 columns × 2 rows)
 local function plotOrigin(i)
@@ -80,8 +80,8 @@ local function buildBase(plot, origin)
                 Name     = "Tile",
                 Size     = Vector3.new(TILE, 1, TILE),
                 Position = Vector3.new(cx, GROUND_Y - 0.5, cz),
-                Color    = ((tx + tz) % 2 == 0) and GRASS_A or GRASS_B,
-                Material = Enum.Material.Grass,
+                Color    = ((tx + tz) % 2 == 0) and MARBLE_A or MARBLE_B,
+                Material = Enum.Material.Marble,
             })
         end
     end
@@ -181,9 +181,7 @@ local function buildStation(plot, pos, stationType, label, icon, themeColor)
         Color = themeColor, Material = Enum.Material.Neon, CanCollide = false,
     })
 
-    local light = Instance.new("PointLight")
-    light.Color = themeColor; light.Range = 14; light.Brightness = 3
-    light.Parent = base
+    -- (no PointLight — neon top glows on its own; keeps the plot lighting clean)
 
     local cd = Instance.new("ClickDetector")
     cd.MaxActivationDistance = 16
@@ -248,9 +246,8 @@ local function buildNode(folder, pos, gemType)
         Color = gd.color, Material = Enum.Material.Neon, Transparency = 0.12, CanCollide = false,
     })
 
-    local light = Instance.new("PointLight")
-    light.Color = gd.color; light.Range = 12; light.Brightness = 2
-    light.Parent = crystal
+    -- (no PointLight on nodes — the neon crystal is emissive on its own; many
+    --  dynamic lights were causing the in-plot lighting glitches)
 
     local bb = billboard(crystal, 4, 52)
     local t1 = Instance.new("TextLabel")
@@ -368,7 +365,7 @@ local function buildGemExchange()
     end
 
     local light = Instance.new("PointLight")
-    light.Color = PURPLE; light.Range = 26; light.Brightness = 4
+    light.Color = PURPLE; light.Range = 16; light.Brightness = 1.6
     light.Parent = torso
 
     -- floating holographic sign
@@ -397,27 +394,33 @@ end
 
 -- ── Lighting polish ─────────────────────────────────────────────────────────
 local function polishLighting()
-    Lighting.ClockTime         = 18.5            -- dusk so neon pops
-    Lighting.Brightness        = 2
-    Lighting.EnvironmentDiffuseScale = 0.4
-    Lighting.OutdoorAmbient    = Color3.fromRGB(70, 70, 95)
-    Lighting.Ambient           = Color3.fromRGB(40, 40, 60)
-    pcall(function() Lighting.Technology = Enum.Technology.Future end)
+    -- ShadowMap (not Future/Voxel) avoids the dynamic-light flicker that was
+    -- glitching inside the plots, while still lighting the marble cleanly.
+    pcall(function() Lighting.Technology = Enum.Technology.ShadowMap end)
+    Lighting.ClockTime         = 14              -- bright afternoon, clean look
+    Lighting.GeographicLatitude = 20
+    Lighting.Brightness        = 2.4
+    Lighting.EnvironmentDiffuseScale  = 0.55
+    Lighting.EnvironmentSpecularScale = 0.4
+    Lighting.OutdoorAmbient    = Color3.fromRGB(150, 152, 165)
+    Lighting.Ambient           = Color3.fromRGB(95, 96, 110)
 
-    if not Lighting:FindFirstChild("WorldAtmosphere") then
-        local atmo = Instance.new("Atmosphere")
-        atmo.Name = "WorldAtmosphere"
-        atmo.Density = 0.32
-        atmo.Haze    = 1.6
-        atmo.Color   = Color3.fromRGB(190, 200, 230)
-        atmo.Decay   = Color3.fromRGB(90, 100, 150)
-        atmo.Parent  = Lighting
+    -- Tone the bloom way down so neon accents glow subtly instead of blowing out
+    local bloom = Lighting:FindFirstChild("WorldBloom")
+    if not bloom then
+        bloom = Instance.new("BloomEffect"); bloom.Name = "WorldBloom"; bloom.Parent = Lighting
     end
-    if not Lighting:FindFirstChild("WorldBloom") then
-        local bloom = Instance.new("BloomEffect")
-        bloom.Name = "WorldBloom"; bloom.Intensity = 0.7; bloom.Size = 24; bloom.Threshold = 1.1
-        bloom.Parent = Lighting
+    bloom.Intensity = 0.25; bloom.Size = 16; bloom.Threshold = 1.6
+
+    -- Light haze for depth, but not so much it murks up the scene
+    local atmo = Lighting:FindFirstChild("WorldAtmosphere")
+    if not atmo then
+        atmo = Instance.new("Atmosphere"); atmo.Name = "WorldAtmosphere"; atmo.Parent = Lighting
     end
+    atmo.Density = 0.18
+    atmo.Haze    = 0.6
+    atmo.Color   = Color3.fromRGB(210, 215, 230)
+    atmo.Decay   = Color3.fromRGB(120, 125, 160)
 end
 
 -- ── Public build ────────────────────────────────────────────────────────────
