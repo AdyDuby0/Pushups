@@ -19,12 +19,8 @@ local WorldBuilder        = require(Mods:WaitForChild("WorldBuilder"))
 local GameConfig          = require(ReplicatedStorage.Config.GameConfig)
 local GemTypes            = require(ReplicatedStorage.Config.GemTypes)
 
-local RunService = game:GetService("RunService")
-
--- Admin access: place owner, Studio, or any UserId listed in GameConfig.ADMIN_IDS
+-- Admin access: restricted to the exact UserIds in GameConfig.ADMIN_IDS
 local function isAdmin(player)
-    if RunService:IsStudio() then return true end
-    if game.CreatorType == Enum.CreatorType.User and player.UserId == game.CreatorId then return true end
     return GameConfig.ADMIN_IDS[player.UserId] == true
 end
 

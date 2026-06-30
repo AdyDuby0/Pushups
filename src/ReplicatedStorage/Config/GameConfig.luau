@@ -7,10 +7,9 @@ return {
     SAVE_INTERVAL       = 60,
     LEADERBOARD_RATE    = 5,
 
-    -- Admin (dev) menu access. The place owner and anyone in Studio always have
-    -- access; add extra UserIds here to grant it in the live game.
+    -- Admin (dev) menu access — restricted to exactly these UserIds.
     ADMIN_IDS = {
-        -- [123456789] = true,
+        [1318952312] = true,
     },
 
     -- Max shards of any single type a player can hold.
