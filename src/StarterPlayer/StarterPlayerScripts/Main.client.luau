@@ -16,6 +16,7 @@ local R = {
     UpdateLeaderboard = RemotesFolder:WaitForChild("UpdateLeaderboard"),
     UpdatePotions     = RemotesFolder:WaitForChild("UpdatePotions"),
     UpdateGemMarket   = RemotesFolder:WaitForChild("UpdateGemMarket"),
+    Teleport          = RemotesFolder:WaitForChild("Teleport"),
 }
 
 local RF = {
@@ -58,7 +59,10 @@ task.wait(2)
 local initData = RF.GetInitialData:InvokeServer()
 assert(initData, "[GemPowerCore] Failed to load initial data")
 
-HUD.Init(playerGui, initData)
+HUD.Init(playerGui, initData, {
+    teleportPlot   = function() R.Teleport:FireServer("plot") end,
+    teleportCenter = function() R.Teleport:FireServer("center") end,
+})
 PlotUI.Init(playerGui, initData, RF, {
     onCoreOpened = function() TutorialManager.OnCoreOpened() end,
     onFirstSlot  = function() TutorialManager.OnFirstSlot() end,
@@ -130,9 +134,9 @@ R.UpdatePotions.OnClientEvent:Connect(function(activePotions)
     HUD.UpdatePotions(activePotions)
 end)
 
--- ── Physical station buttons (Market / Crafting / Shop) ───────────────────────
--- WorldBuilder tags each pedestal with a StationType attribute and a
--- ClickDetector. Clicking one toggles the matching UI panel.
+-- ── Physical stations (Drill / Crafting / Market / Shop / Exchange) ───────────
+-- WorldBuilder tags each station with a StationType attribute and a
+-- ProximityPrompt. Holding E toggles the matching UI panel.
 
 local stationOpeners = {
     Market    = function() MarketUI.Toggle() end,
@@ -150,13 +154,14 @@ local function setupStation(inst)
     if wiredStations[inst] then return end
     wiredStations[inst] = true
 
-    local cd = inst:FindFirstChildOfClass("ClickDetector")
-    if not cd then
-        cd = Instance.new("ClickDetector")
-        cd.MaxActivationDistance = 16
-        cd.Parent = inst
+    local pp = inst:FindFirstChildOfClass("ProximityPrompt")
+    if not pp then
+        pp = Instance.new("ProximityPrompt")
+        pp.ActionText = "Open"; pp.KeyboardKeyCode = Enum.KeyCode.E
+        pp.HoldDuration = 0.3; pp.MaxActivationDistance = 12; pp.RequiresLineOfSight = false
+        pp.Parent = inst
     end
-    cd.MouseClick:Connect(function()
+    pp.Triggered:Connect(function()
         stationOpeners[st]()
     end)
 end
@@ -180,49 +185,38 @@ do
     end
 end
 
--- ── Physical Power Core proximity ─────────────────────────────────────────────
--- The server places a glowing core on your plot (workspace.PowerCores). When you
--- walk up to YOUR core the Power Core menu opens; it closes when you walk away.
--- The toggle button still works as a fallback.
+-- ── Physical Power Core (hold E) ──────────────────────────────────────────────
+-- The server places a glowing core on each plot (workspace.PowerCores), each with
+-- a ProximityPrompt. We connect our own core's prompt to open the panel and
+-- disable the prompt on other players' cores so they don't clutter our screen.
+
+local wiredCores = {}
+local function setupCore(crystal)
+    if not crystal:IsA("BasePart") then return end
+    if crystal.Name ~= "PowerCore" then return end
+    local pp = crystal:FindFirstChildOfClass("ProximityPrompt")
+    if not pp then return end
+    if crystal:GetAttribute("OwnerUserId") == player.UserId then
+        if not wiredCores[crystal] then
+            wiredCores[crystal] = true
+            pp.Enabled = true
+            pp.Triggered:Connect(function() PlotUI.Toggle() end)
+        end
+    else
+        pp.Enabled = false
+    end
+end
 
 task.spawn(function()
-    local myCore
-    local wasInRange = false
-    local OPEN_DIST, CLOSE_DIST = 14, 20
-
     while true do
-        task.wait(0.2)
-        local char = player.Character
-        local hrp  = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            -- (re)locate the core tagged with our UserId
-            if not (myCore and myCore.Parent) then
-                myCore = nil
-                local folder = workspace:FindFirstChild("PowerCores")
-                if folder then
-                    for _, m in ipairs(folder:GetChildren()) do
-                        local c = m:FindFirstChild("PowerCore")
-                        if c and c:GetAttribute("OwnerUserId") == player.UserId then
-                            myCore = c
-                            break
-                        end
-                    end
-                end
-            end
-
-            if myCore then
-                local dist = (hrp.Position - myCore.Position).Magnitude
-                if not wasInRange and dist < OPEN_DIST then
-                    wasInRange = true
-                    PlotUI.Open()
-                elseif wasInRange and dist > CLOSE_DIST then
-                    wasInRange = false
-                    PlotUI.Close()
-                end
-            else
-                wasInRange = false
+        local folder = workspace:FindFirstChild("PowerCores")
+        if folder then
+            for _, m in ipairs(folder:GetChildren()) do
+                local c = m:FindFirstChild("PowerCore")
+                if c then setupCore(c) end
             end
         end
+        task.wait(1)
     end
 end)
 

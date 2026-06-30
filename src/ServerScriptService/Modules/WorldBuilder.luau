@@ -85,6 +85,34 @@ local function labelBillboard(adornee, offsetY, title, subtitle, color)
     return bb
 end
 
+-- Hold-E ProximityPrompt (replaces ClickDetectors)
+local function addPrompt(parentPart, actionText, objectText)
+    local pp = Instance.new("ProximityPrompt")
+    pp.ActionText           = actionText
+    pp.ObjectText           = objectText
+    pp.KeyboardKeyCode      = Enum.KeyCode.E
+    pp.HoldDuration         = 0.3
+    pp.MaxActivationDistance = 12
+    pp.RequiresLineOfSight  = false
+    pp.Parent               = parentPart
+    return pp
+end
+
+-- Steps rising toward a platform. `baseCF` sits at the platform's front edge on
+-- the ground; steps extend out in +Z and get taller as they approach (−Z side).
+local function buildSteps(parent, baseCF, topY, count, width, color)
+    for i = 1, count do
+        local h = (i / count) * topY
+        local p = Instance.new("Part")
+        p.Anchored = true; p.TopSurface = Enum.SurfaceType.Smooth
+        p.BottomSurface = Enum.SurfaceType.Smooth; p.CastShadow = false
+        p.Size = Vector3.new(width, h, 1.2)
+        p.Color = color; p.Material = Enum.Material.SmoothPlastic
+        p.CFrame = baseCF * CFrame.new(0, h / 2, (count - i) * 1.2)
+        p.Parent = parent
+    end
+end
+
 -- ── Base plate (single creamy-grey block) ───────────────────────────────────
 local function buildBase(plot, plotCF)
     -- top at GROUND_Y + 0.05 (lifted a hair so it never z-fights the ground)
@@ -142,20 +170,18 @@ local function buildSpawn(plot, plotCF)
     return spawn
 end
 
--- ── Drill (replaces gem nodes) ──────────────────────────────────────────────
+-- ── Drill (front-right corner of the plot) ──────────────────────────────────
 local function buildDrill(plot, plotCF)
-    local lx, lz = 12, -8
+    local lx, lz = 13, 6
     local ORANGE = Color3.fromRGB(255, 170, 80)
 
-    -- housing (the clickable station)
     local housing = place(plot, plotCF, CFrame.new(lx, 1.5, lz), {
         Name = "Drill", Size = Vector3.new(5.5, 3, 5.5),
         Color = Color3.fromRGB(46, 46, 60), Material = Enum.Material.Metal,
     })
     housing:SetAttribute("StationType", "Drill")
-    local cd = Instance.new("ClickDetector"); cd.MaxActivationDistance = 16; cd.Parent = housing
+    addPrompt(housing, "Open", "Drill")
 
-    -- support frame
     for _, dx in ipairs({ -2, 2 }) do
         place(plot, plotCF, CFrame.new(lx + dx, 5, lz), {
             Name = "DrillLeg", Size = Vector3.new(0.5, 7, 0.5),
@@ -166,8 +192,6 @@ local function buildDrill(plot, plotCF)
         Name = "DrillTop", Size = Vector3.new(5, 0.8, 1.4),
         Color = Color3.fromRGB(70, 70, 88), Material = Enum.Material.Metal, CanCollide = false,
     })
-
-    -- the bit (vertical cylinder, neon tip)
     place(plot, plotCF, CFrame.new(lx, 4.2, lz) * CFrame.Angles(0, 0, math.rad(90)), {
         Name = "DrillBit", Shape = Enum.PartType.Cylinder, Size = Vector3.new(5.5, 1.3, 1.3),
         Color = Color3.fromRGB(120, 120, 140), Material = Enum.Material.Metal, CanCollide = false,
@@ -177,24 +201,69 @@ local function buildDrill(plot, plotCF)
         Color = ORANGE, Material = Enum.Material.Neon, CanCollide = false,
     })
 
-    labelBillboard(housing, 6, "⛏ DRILL", "click to configure", ORANGE)
+    labelBillboard(housing, 6, "⛏ DRILL", "hold [E]", ORANGE)
 end
 
--- ── Crafting station ────────────────────────────────────────────────────────
+-- ── Crafting machine (front-left corner) ─────────────────────────────────────
 local function buildCraftingStation(plot, plotCF)
-    local lx, lz = -12, -8
+    local lx, lz = -13, 6
     local CYAN = Color3.fromRGB(100, 220, 255)
-    local base = place(plot, plotCF, CFrame.new(lx, 2, lz), {
-        Name = "Station_Crafting", Size = Vector3.new(5, 4, 5),
-        Color = Color3.fromRGB(24, 30, 42), Material = Enum.Material.Metal,
+
+    -- workbench base (the station body)
+    local bench = place(plot, plotCF, CFrame.new(lx, 1.5, lz), {
+        Name = "Station_Crafting", Size = Vector3.new(5.5, 3, 4),
+        Color = Color3.fromRGB(26, 32, 44), Material = Enum.Material.DiamondPlate,
     })
-    base:SetAttribute("StationType", "Crafting")
-    local cd = Instance.new("ClickDetector"); cd.MaxActivationDistance = 16; cd.Parent = base
-    place(plot, plotCF, CFrame.new(lx, 4.3, lz) * CFrame.Angles(0, 0, math.rad(90)), {
-        Name = "StationTop", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 5.2, 5.2),
+    bench:SetAttribute("StationType", "Crafting")
+    addPrompt(bench, "Open", "Crafting")
+
+    -- back panel + glowing fabricator core
+    place(plot, plotCF, CFrame.new(lx, 4.2, lz - 1.6), {
+        Name = "FabPanel", Size = Vector3.new(5.5, 4.6, 0.5),
+        Color = Color3.fromRGB(38, 44, 58), Material = Enum.Material.Metal, CanCollide = false,
+    })
+    place(plot, plotCF, CFrame.new(lx, 4.4, lz - 1.1), {
+        Name = "FabCore", Shape = Enum.PartType.Ball, Size = Vector3.new(1.8, 1.8, 1.8),
         Color = CYAN, Material = Enum.Material.Neon, CanCollide = false,
     })
-    labelBillboard(base, 4.6, "🔧 CRAFTING", "click to open", CYAN)
+    -- gantry arm over the bench
+    place(plot, plotCF, CFrame.new(lx, 6.2, lz - 0.4), {
+        Name = "FabArm", Size = Vector3.new(0.5, 0.5, 2.6),
+        Color = Color3.fromRGB(70, 80, 96), Material = Enum.Material.Metal, CanCollide = false,
+    })
+    place(plot, plotCF, CFrame.new(lx, 5.4, lz + 0.7), {
+        Name = "FabHead", Size = Vector3.new(1.2, 1, 1),
+        Color = Color3.fromRGB(90, 100, 120), Material = Enum.Material.Metal, CanCollide = false,
+    })
+    -- two gear cogs on the bench top
+    for _, dx in ipairs({ -1.7, 1.7 }) do
+        place(plot, plotCF, CFrame.new(lx + dx, 3.3, lz + 0.9) * CFrame.Angles(math.rad(90), 0, 0), {
+            Name = "FabGear", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 1.6, 1.6),
+            Color = Color3.fromRGB(120, 130, 150), Material = Enum.Material.Metal, CanCollide = false,
+        })
+    end
+
+    labelBillboard(bench, 6, "🔧 CRAFTING", "hold [E]", CYAN)
+end
+
+-- ── Power Core platform (back-center, raised, with steps) ────────────────────
+local function buildCorePlatform(plot, plotCF)
+    local lz, topY, radius = -8, 2.0, 4.6
+    place(plot, plotCF, CFrame.new(0, topY / 2, lz) * CFrame.Angles(0, 0, math.rad(90)), {
+        Name = "CorePad", Shape = Enum.PartType.Cylinder, Size = Vector3.new(topY, radius * 2, radius * 2),
+        Color = Color3.fromRGB(34, 30, 50), Material = Enum.Material.SmoothPlastic,
+    })
+    place(plot, plotCF, CFrame.new(0, topY + 0.06, lz) * CFrame.Angles(0, 0, math.rad(90)), {
+        Name = "CoreRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, radius * 2 + 0.7, radius * 2 + 0.7),
+        Color = Color3.fromRGB(170, 90, 255), Material = Enum.Material.Neon, CanCollide = false,
+    })
+    -- steps up to the platform from the front (+Z)
+    buildSteps(plot, plotCF * CFrame.new(0, 0, lz + radius), topY, 3, 8, Color3.fromRGB(40, 36, 56))
+
+    -- invisible anchor PowerCoreModel uses to position the core
+    place(plot, plotCF, CFrame.new(0, topY, lz), {
+        Name = "CoreSpot", Size = Vector3.new(1, 1, 1), Transparency = 1, CanCollide = false,
+    })
 end
 
 -- ── Plot sign ───────────────────────────────────────────────────────────────
@@ -216,7 +285,10 @@ local function buildSign(plot, plotCF, index)
     return lbl
 end
 
--- ── Central hub: Market + Shop + Gem Exchange (NPC) ──────────────────────────
+-- ── Central hub: Market + Shop + Gem Exchange (NPC) on a raised, stepped pad ──
+local HUB_TOP    = 2.5
+local HUB_RADIUS = 26
+
 local function buildStationPillar(model, pos, stationType, title, subtitle, color)
     local base = part(model, {
         Name = "Station_" .. stationType, Size = Vector3.new(5, 4, 5),
@@ -229,7 +301,7 @@ local function buildStationPillar(model, pos, stationType, title, subtitle, colo
         CFrame = CFrame.new(pos + Vector3.new(0, 4.3, 0)) * CFrame.Angles(0, 0, math.rad(90)),
         Color = color, Material = Enum.Material.Neon, CanCollide = false,
     })
-    local cd = Instance.new("ClickDetector"); cd.MaxActivationDistance = 16; cd.Parent = base
+    addPrompt(base, "Open", stationType)
     labelBillboard(base, 4.6, title, subtitle, color)
 end
 
@@ -238,42 +310,47 @@ local function buildCenterHub()
 
     -- raised platform
     part(model, {
-        Name = "HubPad", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1, 52, 52),
-        CFrame = CFrame.new(CENTER + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+        Name = "HubPad", Shape = Enum.PartType.Cylinder, Size = Vector3.new(HUB_TOP, HUB_RADIUS * 2, HUB_RADIUS * 2),
+        CFrame = CFrame.new(CENTER + Vector3.new(0, HUB_TOP / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)),
         Color = Color3.fromRGB(34, 32, 46), Material = Enum.Material.SmoothPlastic,
     })
     part(model, {
-        Name = "HubRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 53, 53),
-        CFrame = CFrame.new(CENTER + Vector3.new(0, 0.9, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+        Name = "HubRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, HUB_RADIUS * 2 + 1, HUB_RADIUS * 2 + 1),
+        CFrame = CFrame.new(CENTER + Vector3.new(0, HUB_TOP + 0.1, 0)) * CFrame.Angles(0, 0, math.rad(90)),
         Color = Color3.fromRGB(255, 170, 90), Material = Enum.Material.Neon, CanCollide = false,
     })
+    -- steps up to the pad on four sides
+    for _, ang in ipairs({ 0, 90, 180, 270 }) do
+        local baseCF = CFrame.new(CENTER) * CFrame.Angles(0, math.rad(ang), 0) * CFrame.new(0, 0, HUB_RADIUS)
+        buildSteps(model, baseCF, HUB_TOP, 3, 10, Color3.fromRGB(40, 38, 54))
+    end
 
-    -- Gem Exchange robot vendor at the center
+    -- Gem Exchange robot vendor at the center (on the pad)
     local PURPLE = Color3.fromRGB(255, 170, 90)
     local torso = part(model, {
         Name = "VendorTorso", Size = Vector3.new(3.4, 4, 2),
-        Position = CENTER + Vector3.new(0, 4, 0),
+        Position = CENTER + Vector3.new(0, HUB_TOP + 2, 0),
         Color = Color3.fromRGB(60, 60, 85), Material = Enum.Material.Metal,
     })
     torso:SetAttribute("StationType", "GemMarket")
-    local cdBot = Instance.new("ClickDetector"); cdBot.MaxActivationDistance = 18; cdBot.Parent = torso
+    addPrompt(torso, "Sell Gems", "Gem Exchange")
     part(model, {
         Name = "VendorHead", Size = Vector3.new(2.4, 2, 2.2),
-        Position = CENTER + Vector3.new(0, 7, 0),
+        Position = CENTER + Vector3.new(0, HUB_TOP + 5, 0),
         Color = Color3.fromRGB(75, 75, 105), Material = Enum.Material.Metal,
     })
     part(model, {
         Name = "VendorVisor", Size = Vector3.new(2.0, 0.7, 0.4),
-        Position = CENTER + Vector3.new(0, 7.1, -1.05),
+        Position = CENTER + Vector3.new(0, HUB_TOP + 5.1, -1.05),
         Color = PURPLE, Material = Enum.Material.Neon, CanCollide = false,
     })
     local light = Instance.new("PointLight")
     light.Color = PURPLE; light.Range = 18; light.Brightness = 1.6; light.Parent = torso
-    labelBillboard(torso, 7, "💹 GEM EXCHANGE", "click to sell gems", PURPLE)
+    labelBillboard(torso, 7, "💹 GEM EXCHANGE", "hold [E]", PURPLE)
 
     -- Market + Shop pillars flanking the vendor
-    buildStationPillar(model, CENTER + Vector3.new(-13, 0, 8),  "Market", "💱 MARKET", "click to trade", Color3.fromRGB(130, 255, 130))
-    buildStationPillar(model, CENTER + Vector3.new(13, 0, 8),   "Shop",   "🛒 SHOP",   "click to open",  Color3.fromRGB(200, 130, 255))
+    buildStationPillar(model, CENTER + Vector3.new(-13, HUB_TOP, 8), "Market", "💱 MARKET", "hold [E]", Color3.fromRGB(130, 255, 130))
+    buildStationPillar(model, CENTER + Vector3.new(13, HUB_TOP, 8),  "Shop",   "🛒 SHOP",   "hold [E]", Color3.fromRGB(200, 130, 255))
 
     model.Parent = workspace
     return model
@@ -329,6 +406,7 @@ function WorldBuilder.Build()
         buildBase(plot, cf)
         buildFence(plot, cf)
         local spawn = buildSpawn(plot, cf)
+        buildCorePlatform(plot, cf)
         buildDrill(plot, cf)
         buildCraftingStation(plot, cf)
         signLabels[i] = buildSign(plot, cf, i)

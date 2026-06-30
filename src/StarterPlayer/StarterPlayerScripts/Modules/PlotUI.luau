@@ -531,6 +531,10 @@ function PlotUI.Close()
     panelRef.Visible = false
 end
 
+function PlotUI.Toggle()
+    if isOpen then PlotUI.Close() else PlotUI.Open() end
+end
+
 function PlotUI.IsOpen()
     return isOpen
 end

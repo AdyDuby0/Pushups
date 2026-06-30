@@ -43,6 +43,7 @@ local R = {
     UpdateLeaderboard = ev("UpdateLeaderboard"),
     UpdatePotions     = ev("UpdatePotions"),
     UpdateGemMarket   = ev("UpdateGemMarket"),
+    Teleport          = ev("Teleport"),
 }
 
 local RFn = {
@@ -171,6 +172,19 @@ end
 RFn.GetDrillInfo.OnServerInvoke = function(p)
     return DrillManager.GetInfo(p)
 end
+
+R.Teleport.OnServerEvent:Connect(function(player, target)
+    local char = player.Character
+    local hrp  = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    if target == "plot" then
+        local plot = PlotManager.GetPlot(player)
+        local spawn = plot and plot:FindFirstChild("Spawn")
+        if spawn then hrp.CFrame = spawn.CFrame + Vector3.new(0, 5, 0) end
+    elseif target == "center" then
+        hrp.CFrame = CFrame.new(0, 8, 20)   -- shop district hub
+    end
+end)
 
 RFn.BuyCoreUpgrade.OnServerInvoke = function(p, key)
     local ok, result = PowerCoreManager.BuyCoreUpgrade(p, key)

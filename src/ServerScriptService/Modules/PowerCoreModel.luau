@@ -20,8 +20,12 @@ local function ensureFolder()
     return f
 end
 
--- Where to drop the core: in front of the plot's Spawn pad.
+-- Where to drop the core: on the plot's raised CoreSpot platform if present.
 local function coreCFrame(plot)
+    local spot = plot:FindFirstChild("CoreSpot")
+    if spot and spot:IsA("BasePart") then
+        return spot.CFrame
+    end
     local spawn = plot:FindFirstChild("Spawn")
     if spawn and spawn:IsA("BasePart") then
         return spawn.CFrame * CFrame.new(0, 0, -8)
@@ -205,6 +209,16 @@ function PowerCoreModel.Spawn(player, plot)
     crystal.Name = "PowerCore"
     crystal:SetAttribute("OwnerUserId", player.UserId)
 
+    -- Hold-E prompt to open the Power Core panel (client connects Triggered)
+    local prompt = Instance.new("ProximityPrompt")
+    prompt.ActionText           = "Open"
+    prompt.ObjectText           = "Power Core"
+    prompt.KeyboardKeyCode      = Enum.KeyCode.E
+    prompt.HoldDuration         = 0.3
+    prompt.MaxActivationDistance = 12
+    prompt.RequiresLineOfSight  = false
+    prompt.Parent               = crystal
+
     -- Point light at the equator (kept modest — one soft light per core so the
     -- scene stays clean now that node/station lights are gone)
     local light = Instance.new("PointLight")
@@ -230,7 +244,7 @@ function PowerCoreModel.Spawn(player, plot)
 
     local t2 = Instance.new("TextLabel")
     t2.Size = UDim2.new(1, 0, 0.42, 0); t2.Position = UDim2.new(0, 0, 0.56, 0)
-    t2.BackgroundTransparency = 1; t2.Text = "walk up to open"
+    t2.BackgroundTransparency = 1; t2.Text = "hold [E]"
     t2.Font = Enum.Font.Gotham; t2.TextScaled = true
     t2.TextColor3 = Color3.fromRGB(180, 170, 220); t2.TextStrokeTransparency = 0.4
     t2.Parent = bb

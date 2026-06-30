@@ -44,66 +44,79 @@ local function makeFrame(parent, props)
     f.Parent = parent; return f
 end
 
-function HUD.Init(playerGui, initData)
+function HUD.Init(playerGui, initData, hooks)
+    hooks = hooks or {}
     local gui = Instance.new("ScreenGui")
     gui.Name = "HUD"; gui.ResetOnSpawn = false
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     gui.Parent = playerGui
 
-    -- Top bar
-    local topBar = makeFrame(gui, {
-        Size = UDim2.new(1, 0, 0, 56),
-        BackgroundColor3 = Color3.fromRGB(8, 8, 18),
-        BackgroundTransparency = 0.25, BorderSizePixel = 0,
-    })
+    local BOX_W = 236
 
-    -- ── Credits box (💰 basic currency) ─────────────────────────────────────
-    local creditBox = makeFrame(topBar, {
-        Size = UDim2.new(0, 220, 1, -10), Position = UDim2.new(0, 8, 0, 5),
-        BackgroundColor3 = Color3.fromRGB(18, 18, 36), BorderSizePixel = 0,
+    -- ── Credits box (💰) — bottom-right corner ───────────────────────────────
+    local creditBox = makeFrame(gui, {
+        Size = UDim2.new(0, BOX_W, 0, 52),
+        Position = UDim2.new(1, -8, 1, -8), AnchorPoint = Vector2.new(1, 1),
+        BackgroundColor3 = Color3.fromRGB(18, 18, 36), BackgroundTransparency = 0.1, BorderSizePixel = 0,
     })
     corner(creditBox, 6)
 
     makeLabel(creditBox, {
-        Size = UDim2.new(0, 28, 1, 0), Position = UDim2.new(0, 4, 0, 0),
+        Size = UDim2.new(0, 28, 1, 0), Position = UDim2.new(0, 6, 0, 0),
         BackgroundTransparency = 1, Text = "💰", TextScaled = true,
     })
-
     creditsLabel = makeLabel(creditBox, {
         Name = "CreditsLabel",
-        Size = UDim2.new(1, -38, 0.58, 0), Position = UDim2.new(0, 34, 0, 2),
+        Size = UDim2.new(1, -40, 0.58, 0), Position = UDim2.new(0, 36, 0, 2),
         BackgroundTransparency = 1, Text = fmt(initData.credits),
         TextColor3 = Color3.fromRGB(255, 220, 50), Font = Enum.Font.GothamBold,
         TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left,
     })
-
     incomeLabel = makeLabel(creditBox, {
         Name = "IncomeLabel",
-        Size = UDim2.new(1, -38, 0.38, 0), Position = UDim2.new(0, 34, 0.58, 0),
+        Size = UDim2.new(1, -40, 0.38, 0), Position = UDim2.new(0, 36, 0.58, 0),
         BackgroundTransparency = 1, Text = "+" .. fmt(initData.incomeRate) .. "/s",
         TextColor3 = Color3.fromRGB(80, 255, 80), Font = Enum.Font.Gotham,
         TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left,
     })
 
-    -- ── Premium currency box (💎 gem diamonds) ──────────────────────────────
-    local gemBox = makeFrame(topBar, {
-        Size = UDim2.new(0, 130, 1, -10), Position = UDim2.new(0, 236, 0, 5),
-        BackgroundColor3 = Color3.fromRGB(20, 10, 40), BorderSizePixel = 0,
+    -- ── Premium currency box (💎) — above credits ────────────────────────────
+    local gemBox = makeFrame(gui, {
+        Size = UDim2.new(0, BOX_W, 0, 42),
+        Position = UDim2.new(1, -8, 1, -66), AnchorPoint = Vector2.new(1, 1),
+        BackgroundColor3 = Color3.fromRGB(20, 10, 40), BackgroundTransparency = 0.1, BorderSizePixel = 0,
     })
     corner(gemBox, 6)
-
     makeLabel(gemBox, {
-        Size = UDim2.new(0, 28, 1, 0), Position = UDim2.new(0, 4, 0, 0),
+        Size = UDim2.new(0, 28, 1, 0), Position = UDim2.new(0, 6, 0, 0),
         BackgroundTransparency = 1, Text = "💎", TextScaled = true,
     })
-
     gemCurrLabel = makeLabel(gemBox, {
         Name = "GemCurrLabel",
-        Size = UDim2.new(1, -36, 1, 0), Position = UDim2.new(0, 32, 0, 0),
+        Size = UDim2.new(1, -38, 1, 0), Position = UDim2.new(0, 36, 0, 0),
         BackgroundTransparency = 1, Text = fmt(initData.gemCurrency or 0),
         TextColor3 = Color3.fromRGB(200, 150, 255), Font = Enum.Font.GothamBold,
         TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left,
     })
+
+    -- ── Teleport buttons — above the money ───────────────────────────────────
+    local tpRow = makeFrame(gui, {
+        Size = UDim2.new(0, BOX_W, 0, 40),
+        Position = UDim2.new(1, -8, 1, -114), AnchorPoint = Vector2.new(1, 1),
+        BackgroundTransparency = 1, BorderSizePixel = 0,
+    })
+    local function tpButton(text, xScale, color, fn)
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.new(0.49, 0, 1, 0); b.Position = UDim2.new(xScale, 0, 0, 0)
+        b.BackgroundColor3 = color; b.BorderSizePixel = 0
+        b.Text = text; b.TextColor3 = Color3.fromRGB(255, 255, 255)
+        b.Font = Enum.Font.GothamBold; b.TextScaled = true; b.Parent = tpRow
+        corner(b, 6)
+        b.MouseButton1Click:Connect(function() if fn then fn() end end)
+        return b
+    end
+    tpButton("🏠 My Plot", 0,    Color3.fromRGB(35, 70, 120), hooks.teleportPlot)
+    tpButton("🏬 District", 0.51, Color3.fromRGB(90, 50, 130), hooks.teleportCenter)
 
     -- ── Leaderboard ──────────────────────────────────────────────────────────
     local lbPanel = makeFrame(gui, {
