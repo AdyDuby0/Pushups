@@ -134,6 +134,57 @@ function PowerCoreManager.UnslotGem(player, slotIndex)
     return true
 end
 
+-- Empty every slot, returning the gems to the inventory
+function PowerCoreManager.ClearSlots(player)
+    local data = DataManager.Get(player)
+    if not data then return false, "No data" end
+    for i, gemType in pairs(data.coreSlots) do
+        if gemType then
+            data.gems[gemType] = (data.gems[gemType] or 0) + 1
+            data.coreSlots[i] = nil
+        end
+    end
+    return true, { coreSlots = data.coreSlots, gems = data.gems }
+end
+
+-- Clear, then fill every slot with the strongest gems available, stepping down
+-- a rank whenever a higher one runs out.
+function PowerCoreManager.AutoFillBest(player)
+    local data = DataManager.Get(player)
+    if not data then return false, "No data" end
+
+    -- return slotted gems to the inventory first
+    for i, gemType in pairs(data.coreSlots) do
+        if gemType then
+            data.gems[gemType] = (data.gems[gemType] or 0) + 1
+            data.coreSlots[i] = nil
+        end
+    end
+
+    -- rank gems strongest-first (rarity, then fuel)
+    local order = {}
+    for gt, gd in pairs(GemTypes) do
+        table.insert(order, { t = gt, tier = gd.rarityTier or 0, fuel = gd.baseFuel or 0 })
+    end
+    table.sort(order, function(a, b)
+        if a.tier ~= b.tier then return a.tier > b.tier end
+        return a.fuel > b.fuel
+    end)
+
+    local maxSlots = PowerCoreManager.GetMaxSlots(player)
+    for slot = 1, maxSlots do
+        for _, g in ipairs(order) do
+            if (data.gems[g.t] or 0) > 0 then
+                data.coreSlots[slot] = g.t
+                data.gems[g.t] -= 1
+                if data.gems[g.t] <= 0 then data.gems[g.t] = nil end
+                break
+            end
+        end
+    end
+    return true, { coreSlots = data.coreSlots, gems = data.gems }
+end
+
 function PowerCoreManager.UpgradeCore(player)
     local data = DataManager.Get(player)
     if not data then return false, "No data" end

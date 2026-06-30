@@ -110,21 +110,35 @@ function PowerCoreModel.Spawn(player, plot)
             a, SIDE_W, DRUM_H, 0.12, GLASS, Enum.Material.Glass, 0.55)
     end
 
-    -- Faceted glass roof: 8 slanted panels converging to a cap
+    -- Faceted glass roof: 8 trapezoid facets that lie along the cone and
+    -- converge to a small cap. Each facet is oriented with fromMatrix so the
+    -- panel plane follows the slope (avoids the flared/inverted look).
     local ROOF_H   = 1.8
-    local roofTopR = DRUM_R * 0.32
+    local roofTopR = DRUM_R * 0.34
     local roofLen  = math.sqrt(ROOF_H ^ 2 + (DRUM_R - roofTopR) ^ 2)
     for i = 0, N - 1 do
-        local a   = i * STEP + STEP / 2
-        local rmid = (DRUM_R + roofTopR) / 2
-        local cx, cz = math.cos(a) * rmid, math.sin(a) * rmid
-        outwardPanel(cx, TOP_Y + ROOF_H / 2, cz, a, SIDE_W * 0.82, roofLen, 0.12,
-            GLASS, Enum.Material.Glass, 0.5, Vector3.new(cx + math.cos(a), TOP_Y, cz + math.sin(a)))
+        local a = i * STEP + STEP / 2
+        local radial  = Vector3.new(math.cos(a), 0, math.sin(a))
+        local tangent = Vector3.new(-math.sin(a), 0, math.cos(a))
+        local slope   = ((roofTopR - DRUM_R) * radial + Vector3.new(0, ROOF_H, 0)).Unit
+        local center  = radial * ((DRUM_R + roofTopR) / 2) + Vector3.new(0, TOP_Y + ROOF_H / 2, 0)
+        makePart(model, {
+            Size   = Vector3.new(SIDE_W * 0.9, roofLen, 0.12),
+            CFrame = baseCF * CFrame.fromMatrix(center, tangent, slope),
+            Color = GLASS, Material = Enum.Material.Glass, Transparency = 0.5, CanCollide = false,
+        })
     end
+    -- small octagon cap closing the top
+    makePart(model, {
+        Shape = Enum.PartType.Cylinder,
+        Size = Vector3.new(0.3, roofTopR * 2.1, roofTopR * 2.1),
+        CFrame = baseCF * CFrame.new(0, TOP_Y + ROOF_H, 0) * CFrame.Angles(0, 0, math.rad(90)),
+        Color = GLASS, Material = Enum.Material.Glass, Transparency = 0.5,
+    })
     -- top cap nub
     makePart(model, {
         Size = Vector3.new(0.9, 0.9, 0.9),
-        CFrame = baseCF * CFrame.new(0, TOP_Y + ROOF_H + 0.3, 0),
+        CFrame = baseCF * CFrame.new(0, TOP_Y + ROOF_H + 0.45, 0),
         Color = FRAME, Material = Enum.Material.Metal,
     })
 

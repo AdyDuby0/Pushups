@@ -56,6 +56,8 @@ local RFn = {
     GetInitialData  = fn("GetInitialData"),
     SlotGem         = fn("SlotGem"),
     UnslotGem       = fn("UnslotGem"),
+    ClearSlots      = fn("ClearSlots"),
+    AutoFillBest    = fn("AutoFillBest"),
     UpgradeCore     = fn("UpgradeCore"),
     CreateListing   = fn("CreateListing"),
     CancelListing   = fn("CancelListing"),
@@ -124,6 +126,24 @@ end
 
 RFn.UnslotGem.OnServerInvoke = function(p, slot)
     return PowerCoreManager.UnslotGem(p, slot)
+end
+
+RFn.ClearSlots.OnServerInvoke = function(p)
+    local ok, result = PowerCoreManager.ClearSlots(p)
+    if ok then
+        R.UpdateInventory:FireClient(p, result.gems)
+        R.UpdateHUD:FireClient(p, { incomeRate = PowerCoreManager.GetIncomeRate(p) })
+    end
+    return ok, result
+end
+
+RFn.AutoFillBest.OnServerInvoke = function(p)
+    local ok, result = PowerCoreManager.AutoFillBest(p)
+    if ok then
+        R.UpdateInventory:FireClient(p, result.gems)
+        R.UpdateHUD:FireClient(p, { incomeRate = PowerCoreManager.GetIncomeRate(p) })
+    end
+    return ok, result
 end
 
 RFn.UpgradeCore.OnServerInvoke = function(p)

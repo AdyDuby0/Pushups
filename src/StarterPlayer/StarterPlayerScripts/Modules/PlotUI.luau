@@ -412,7 +412,7 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
 
     slotsGrid = Instance.new("ScrollingFrame")
     slotsGrid.Name = "SlotsGrid"
-    slotsGrid.Size = UDim2.new(1, 0, 0, 250)
+    slotsGrid.Size = UDim2.new(1, 0, 0, 224)
     slotsGrid.Position = UDim2.new(0, 0, 0, 22)
     slotsGrid.BackgroundColor3 = Color3.fromRGB(12, 12, 26)
     slotsGrid.BackgroundTransparency = 0.4
@@ -431,16 +431,44 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
     gridPad.PaddingTop = UDim.new(0, 5); gridPad.PaddingLeft = UDim.new(0, 5)
     gridPad.Parent = slotsGrid
 
+    -- Remove All / Equip Best buttons
+    local function slotActionBtn(text, xScale, color, fn)
+        local b = Instance.new("TextButton")
+        b.Size = UDim2.new(0.49, 0, 0, 32); b.Position = UDim2.new(xScale, 0, 0, 250)
+        b.BackgroundColor3 = color; b.BorderSizePixel = 0
+        b.Text = text; b.TextColor3 = Color3.fromRGB(255, 255, 255)
+        b.Font = Enum.Font.GothamBold; b.TextScaled = true; b.Parent = slotsTab
+        corner(b, 5)
+        b.MouseButton1Click:Connect(fn)
+        return b
+    end
+    slotActionBtn("✕ Remove All", 0, Color3.fromRGB(150, 55, 55), function()
+        local ok, result = RF_ref.ClearSlots:InvokeServer()
+        if ok and type(result) == "table" then
+            data.coreSlots = result.coreSlots or {}
+            data.gems = result.gems or {}
+            refreshSlots(); refreshGems()
+        end
+    end)
+    slotActionBtn("★ Equip Best", 0.51, Color3.fromRGB(45, 130, 75), function()
+        local ok, result = RF_ref.AutoFillBest:InvokeServer()
+        if ok and type(result) == "table" then
+            data.coreSlots = result.coreSlots or {}
+            data.gems = result.gems or {}
+            refreshSlots(); refreshGems()
+        end
+    end)
+
     local invLbl = Instance.new("TextLabel")
-    invLbl.Size = UDim2.new(1, 0, 0, 18); invLbl.Position = UDim2.new(0, 4, 0, 278)
+    invLbl.Size = UDim2.new(1, 0, 0, 18); invLbl.Position = UDim2.new(0, 4, 0, 290)
     invLbl.BackgroundTransparency = 1; invLbl.Text = "INVENTORY"
     invLbl.TextColor3 = Color3.fromRGB(160, 160, 160); invLbl.Font = Enum.Font.GothamBold
     invLbl.TextScaled = true; invLbl.TextXAlignment = Enum.TextXAlignment.Left
     invLbl.Parent = slotsTab
 
     gemsScroll = Instance.new("ScrollingFrame")
-    gemsScroll.Size = UDim2.new(1, 0, 1, -300)
-    gemsScroll.Position = UDim2.new(0, 0, 0, 300)
+    gemsScroll.Size = UDim2.new(1, 0, 1, -312)
+    gemsScroll.Position = UDim2.new(0, 0, 0, 312)
     gemsScroll.BackgroundTransparency = 1
     gemsScroll.BorderSizePixel = 0
     gemsScroll.ScrollBarThickness = 4
