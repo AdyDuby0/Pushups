@@ -14,6 +14,7 @@ local PotionManager       = require(Mods:WaitForChild("PotionManager"))
 local MonetizationManager = require(Mods:WaitForChild("MonetizationManager"))
 local PowerCoreModel      = require(Mods:WaitForChild("PowerCoreModel"))
 local GemMarketManager    = require(Mods:WaitForChild("GemMarketManager"))
+local DrillManager        = require(Mods:WaitForChild("DrillManager"))
 local WorldBuilder        = require(Mods:WaitForChild("WorldBuilder"))
 local GameConfig          = require(ReplicatedStorage.Config.GameConfig)
 
@@ -52,8 +53,11 @@ local RFn = {
     CreateListing   = fn("CreateListing"),
     CancelListing   = fn("CancelListing"),
     BuyListing      = fn("BuyListing"),
-    StartExtraction = fn("StartExtraction"),
-    StopExtraction  = fn("StopExtraction"),
+    StartDrill      = fn("StartDrill"),
+    StopDrill       = fn("StopDrill"),
+    SetDrillGem     = fn("SetDrillGem"),
+    UpgradeDrillDepth = fn("UpgradeDrillDepth"),
+    GetDrillInfo    = fn("GetDrillInfo"),
     BuyCoreUpgrade  = fn("BuyCoreUpgrade"),
     CraftGear       = fn("CraftGear"),
     EquipGear       = fn("EquipGear"),
@@ -76,6 +80,7 @@ GearManager.Init(DataManager)
 PotionManager.Init(DataManager)
 MonetizationManager.Init(DataManager, R)
 GemMarketManager.Init(DataManager, R)
+DrillManager.Init(DataManager)
 PowerCoreModel.StartAnimation()
 
 -- ── Remote handlers ───────────────────────────────────────────────────────────
@@ -100,6 +105,7 @@ RFn.GetInitialData.OnServerInvoke = function(player)
         coreUpgrades    = PowerCoreManager.GetCoreUpgradeInfo(player),
         listings        = MarketManager.GetAll(),
         gemMarket       = GemMarketManager.GetPrices(),
+        drill           = DrillManager.GetInfo(player),
     }
 end
 
@@ -133,12 +139,37 @@ RFn.SellToNPC.OnServerInvoke = function(p, gemType, qty)
     return GemMarketManager.Sell(p, gemType, qty)
 end
 
-RFn.StartExtraction.OnServerInvoke = function(p, node)
-    return GemManager.StartExtraction(p, node)
+RFn.StartDrill.OnServerInvoke = function(p)
+    local gemType = DrillManager.CurrentGem(p)
+    if not gemType then return false, "Drill not set" end
+    return GemManager.StartMining(p, gemType)
 end
 
-RFn.StopExtraction.OnServerInvoke = function(p)
-    GemManager.StopExtraction(p); return true
+RFn.StopDrill.OnServerInvoke = function(p)
+    GemManager.StopMining(p); return true
+end
+
+RFn.SetDrillGem.OnServerInvoke = function(p, gemType)
+    local ok, err = DrillManager.SetGem(p, gemType)
+    if ok and GemManager.IsMining(p) then
+        -- restart the drill on the newly selected gem
+        GemManager.StopMining(p)
+        local restartOk, mineTime = GemManager.StartMining(p, gemType)
+        return true, { gemType = gemType, mining = restartOk, mineTime = mineTime }
+    end
+    return ok, ok and { gemType = gemType, mining = false } or err
+end
+
+RFn.UpgradeDrillDepth.OnServerInvoke = function(p)
+    local ok, result = DrillManager.UpgradeDepth(p)
+    if ok then
+        R.UpdateHUD:FireClient(p, { credits = result.credits })
+    end
+    return ok, result
+end
+
+RFn.GetDrillInfo.OnServerInvoke = function(p)
+    return DrillManager.GetInfo(p)
 end
 
 RFn.BuyCoreUpgrade.OnServerInvoke = function(p, key)

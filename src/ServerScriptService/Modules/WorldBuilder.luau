@@ -1,471 +1,346 @@
--- Procedurally builds the playable world so everything syncs through Rojo
--- (no hand-placed parts needed in Studio).
+-- Procedurally builds the playable world so everything syncs through Rojo.
 --
--- For each of the 6 plots it creates:
---   • a green, blocky checkerboard base plate
---   • a fence around the perimeter with a front entrance gap
---   • a "Spawn" pad (PlotManager teleports players here; PowerCoreModel drops
---     the core just in front of it)
---   • three physical station pedestals (Market / Crafting / Shop) — clickable
---     buttons tagged with a StationType attribute that the client wires to UIs
---   • a row of gem-node crystals to mine (Crystite, Voidstone, Neutronium,
---     Singularity Core)
+-- Layout: 6 plots arranged in a ring, each rotated so its entrance faces the
+-- middle. The middle holds a central hub with the Market, Shop and Gem Exchange.
+--
+-- Each plot has:
+--   • a single creamy-grey base block (lifted slightly to avoid z-fighting)
+--   • a fence with a doorway facing the center
+--   • a Spawn pad (PlotManager landing; PowerCoreModel drops the core in front)
+--   • a DRILL (replaces the old gem nodes) — clickable, opens the Drill menu
+--   • a CRAFTING station next to the drill
 --   • a plot sign
--- Plus a ground baseplate and some sci-fi lighting polish.
+-- Lighting keeps the dark floor mist but uses ShadowMap so it doesn't flicker.
 
-local Lighting          = game:GetService("Lighting")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local GemTypes = require(ReplicatedStorage.Config.GemTypes)
+local Lighting = game:GetService("Lighting")
 
 local WorldBuilder = {}
 
 -- ── Layout constants ────────────────────────────────────────────────────────
-local PLOT_SIZE   = 56          -- square footprint (studs)
-local HALF        = PLOT_SIZE / 2
-local TILE        = 14          -- checkerboard tile size (4×4 grid)
-local COL_SPACING = 80
-local ROW_SPACING = 92
-local GROUND_Y    = 0           -- top of base plates
+local GROUND_Y     = 0
+local PLOT_SIZE    = 52
+local HALF         = PLOT_SIZE / 2
+local TILE_F       = 13          -- fence post spacing
+local RING_RADIUS  = 112         -- distance from world center to each plot center
+local CENTER       = Vector3.new(0, GROUND_Y, 0)
 
-local MARBLE_A = Color3.fromRGB(240, 240, 246)   -- white marble
-local MARBLE_B = Color3.fromRGB(214, 217, 228)   -- light grey marble
+local CREAM    = Color3.fromRGB(206, 201, 190)   -- creamy-grey base block
 local FENCE_C  = Color3.fromRGB(40, 44, 60)
 local FENCE_T  = Color3.fromRGB(120, 200, 255)
 
--- Plot center for index 1..6 (3 columns × 2 rows)
-local function plotOrigin(i)
-    local col = (i - 1) % 3            -- 0,1,2
-    local row = math.floor((i - 1) / 3) -- 0,1
-    local x = (col - 1) * COL_SPACING
-    local z = (row == 0) and -ROW_SPACING / 2 or ROW_SPACING / 2
-    return Vector3.new(x, GROUND_Y, z)
+-- Plot CFrame for index 1..6: positioned on the ring, local +Z faces the center
+local function plotCFrame(i)
+    local angle = math.rad((i - 1) * 60)
+    local pc = Vector3.new(math.cos(angle) * RING_RADIUS, GROUND_Y, math.sin(angle) * RING_RADIUS)
+    -- lookAt makes -Z point toward `target`; aim it outward so +Z faces center
+    return CFrame.lookAt(pc, pc + (pc - CENTER))
 end
 
 -- ── Part helpers ────────────────────────────────────────────────────────────
+-- World-space part
 local function part(parent, props)
     local p = Instance.new("Part")
-    p.Anchored      = true
-    p.CanCollide    = true
-    p.TopSurface    = Enum.SurfaceType.Smooth
-    p.BottomSurface = Enum.SurfaceType.Smooth
+    p.Anchored = true; p.CanCollide = true
+    p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth
+    p.CastShadow = false
     for k, v in pairs(props) do p[k] = v end
     p.Parent = parent
     return p
 end
 
-local function corner(inst, r)
-    local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0, r or 6); c.Parent = inst
+-- Part placed in a plot's local frame: CFrame = plotCF * lcf
+local function place(parent, plotCF, lcf, props)
+    local p = Instance.new("Part")
+    p.Anchored = true; p.CanCollide = true
+    p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth
+    p.CastShadow = false
+    for k, v in pairs(props) do p[k] = v end
+    p.CFrame = plotCF * lcf
+    p.Parent = parent
+    return p
 end
 
 local function billboard(adornee, offsetY, h)
     local bb = Instance.new("BillboardGui")
-    bb.Size        = UDim2.new(0, 200, 0, h or 56)
+    bb.Size = UDim2.new(0, 200, 0, h or 56)
     bb.StudsOffset = Vector3.new(0, offsetY, 0)
     bb.AlwaysOnTop = true
-    bb.MaxDistance = 60
-    bb.Adornee     = adornee
-    bb.Parent      = adornee
+    bb.MaxDistance = 70
+    bb.Adornee = adornee
+    bb.Parent = adornee
     return bb
 end
 
--- ── Base plate (green, blocky checkerboard) ─────────────────────────────────
-local function buildBase(plot, origin)
-    local n = math.floor(PLOT_SIZE / TILE)  -- 4
-    for tx = 0, n - 1 do
-        for tz = 0, n - 1 do
-            local cx = origin.x + (tx - (n - 1) / 2) * TILE
-            local cz = origin.z + (tz - (n - 1) / 2) * TILE
-            part(plot, {
-                Name     = "Tile",
-                Size     = Vector3.new(TILE, 1, TILE),
-                Position = Vector3.new(cx, GROUND_Y - 0.5, cz),
-                Color    = ((tx + tz) % 2 == 0) and MARBLE_A or MARBLE_B,
-                Material = Enum.Material.Marble,
-            })
-        end
-    end
-    -- Thin dark rim so the plot reads as a defined platform
-    part(plot, {
-        Name      = "Rim",
-        Size      = Vector3.new(PLOT_SIZE + 2, 1.4, PLOT_SIZE + 2),
-        Position  = Vector3.new(origin.x, GROUND_Y - 1.0, origin.z),
-        Color     = Color3.fromRGB(28, 30, 42),
-        Material   = Enum.Material.Slate,
-        CanCollide = false,
+local function labelBillboard(adornee, offsetY, title, subtitle, color)
+    local bb = billboard(adornee, offsetY, 58)
+    local t1 = Instance.new("TextLabel")
+    t1.Size = UDim2.new(1, 0, 0.55, 0); t1.BackgroundTransparency = 1
+    t1.Text = title; t1.Font = Enum.Font.GothamBold; t1.TextScaled = true
+    t1.TextColor3 = color; t1.TextStrokeTransparency = 0.3; t1.Parent = bb
+    local t2 = Instance.new("TextLabel")
+    t2.Size = UDim2.new(1, 0, 0.4, 0); t2.Position = UDim2.new(0, 0, 0.58, 0)
+    t2.BackgroundTransparency = 1; t2.Text = subtitle
+    t2.Font = Enum.Font.Gotham; t2.TextScaled = true
+    t2.TextColor3 = Color3.fromRGB(205, 205, 222); t2.TextStrokeTransparency = 0.4; t2.Parent = bb
+    return bb
+end
+
+-- ── Base plate (single creamy-grey block) ───────────────────────────────────
+local function buildBase(plot, plotCF)
+    -- top at GROUND_Y + 0.05 (lifted a hair so it never z-fights the ground)
+    place(plot, plotCF, CFrame.new(0, -0.95, 0), {
+        Name = "Base",
+        Size = Vector3.new(PLOT_SIZE, 2, PLOT_SIZE),
+        Color = CREAM,
+        Material = Enum.Material.SmoothPlastic,
     })
 end
 
--- ── Fence around the perimeter with a front entrance gap (+Z side) ───────────
-local function buildFence(plot, origin)
+-- ── Fence (doorway on the inward +Z side) ───────────────────────────────────
+local function buildFence(plot, plotCF)
     local POST_H = 5
-    local step   = TILE
     local function post(x, z)
-        part(plot, {
-            Name = "FencePost", Shape = Enum.PartType.Block,
-            Size = Vector3.new(0.6, POST_H, 0.6),
-            Position = Vector3.new(x, GROUND_Y + POST_H / 2, z),
+        place(plot, plotCF, CFrame.new(x, POST_H / 2, z), {
+            Name = "FencePost", Size = Vector3.new(0.6, POST_H, 0.6),
             Color = FENCE_C, Material = Enum.Material.Metal,
         })
     end
-    local function rail(x, z, len, horizontal)
-        part(plot, {
-            Name = "FenceRail",
-            Size = horizontal and Vector3.new(len, 0.35, 0.35) or Vector3.new(0.35, 0.35, len),
-            Position = Vector3.new(x, GROUND_Y + POST_H - 1.2, z),
-            Color = FENCE_T, Material = Enum.Material.Neon,
-            CanCollide = false,
+    local function rail(lx, lz, sx, sz)
+        place(plot, plotCF, CFrame.new(lx, POST_H - 1.2, lz), {
+            Name = "FenceRail", Size = Vector3.new(sx, 0.3, sz),
+            Color = FENCE_T, Material = Enum.Material.Neon, CanCollide = false,
         })
     end
 
-    local minX, maxX = origin.x - HALF, origin.x + HALF
-    local minZ, maxZ = origin.z - HALF, origin.z + HALF
-
-    -- Posts along all four edges
-    for x = minX, maxX, step do
-        post(x, minZ)             -- back edge
-        -- front edge: skip the center post to leave an entrance doorway
-        if math.abs(x - origin.x) > 1 then post(x, maxZ) end
+    for x = -HALF, HALF, TILE_F do
+        post(x, -HALF)                       -- outward (back) edge
+        if math.abs(x) > 1 then post(x, HALF) end  -- inward edge: skip center for the doorway
     end
-    for z = minZ, maxZ, step do
-        post(minX, z)
-        post(maxX, z)
+    for z = -HALF, HALF, TILE_F do
+        post(-HALF, z)
+        post(HALF, z)
     end
 
-    -- Glowing rails
-    rail(origin.x, minZ, PLOT_SIZE, true)              -- back
-    rail(minX, origin.z, PLOT_SIZE, false)             -- left
-    rail(maxX, origin.z, PLOT_SIZE, false)             -- right
-    -- Front rails on either side of the entrance gap
-    local segLen = HALF - step
-    rail(origin.x - (HALF - segLen / 2), maxZ, segLen, true)
-    rail(origin.x + (HALF - segLen / 2), maxZ, segLen, true)
+    rail(0, -HALF, PLOT_SIZE, 0.3)           -- back
+    rail(-HALF, 0, 0.3, PLOT_SIZE)           -- left
+    rail(HALF, 0, 0.3, PLOT_SIZE)            -- right
+    local seg = HALF - TILE_F
+    rail(-(HALF - seg / 2), HALF, seg, 0.3)  -- front, left of doorway
+    rail(HALF - seg / 2, HALF, seg, 0.3)     -- front, right of doorway
 end
 
 -- ── Spawn pad ───────────────────────────────────────────────────────────────
-local function buildSpawn(plot, origin)
-    local spawn = part(plot, {
-        Name      = "Spawn",
-        Size      = Vector3.new(10, 1, 10),
-        Position  = Vector3.new(origin.x, GROUND_Y + 0.6, origin.z + 16),
-        Color     = Color3.fromRGB(60, 70, 110),
-        Material  = Enum.Material.SmoothPlastic,
-        Transparency = 0.1,
+local function buildSpawn(plot, plotCF)
+    local spawn = place(plot, plotCF, CFrame.new(0, 0.6, HALF - 6), {
+        Name = "Spawn", Size = Vector3.new(10, 1, 10),
+        Color = Color3.fromRGB(60, 70, 110), Material = Enum.Material.SmoothPlastic, Transparency = 0.1,
     })
-    -- glowing ring on the pad
-    part(plot, {
-        Name = "SpawnGlow", Shape = Enum.PartType.Cylinder,
-        Size = Vector3.new(0.3, 9, 9),
-        CFrame = CFrame.new(spawn.Position + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+    place(plot, plotCF, CFrame.new(0, 1.1, HALF - 6) * CFrame.Angles(0, 0, math.rad(90)), {
+        Name = "SpawnGlow", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 9, 9),
         Color = FENCE_T, Material = Enum.Material.Neon, CanCollide = false,
     })
     return spawn
 end
 
--- ── Station pedestal (clickable button → opens a UI panel on the client) ─────
-local function buildStation(plot, pos, stationType, label, icon, themeColor)
-    local base = part(plot, {
-        Name      = "Station_" .. stationType,
-        Size      = Vector3.new(5, 4, 5),
-        Position  = pos + Vector3.new(0, 2, 0),
-        Color     = Color3.fromRGB(24, 26, 40),
-        Material  = Enum.Material.Metal,
+-- ── Drill (replaces gem nodes) ──────────────────────────────────────────────
+local function buildDrill(plot, plotCF)
+    local lx, lz = 12, -8
+    local ORANGE = Color3.fromRGB(255, 170, 80)
+
+    -- housing (the clickable station)
+    local housing = place(plot, plotCF, CFrame.new(lx, 1.5, lz), {
+        Name = "Drill", Size = Vector3.new(5.5, 3, 5.5),
+        Color = Color3.fromRGB(46, 46, 60), Material = Enum.Material.Metal,
     })
-    base:SetAttribute("StationType", stationType)
+    housing:SetAttribute("StationType", "Drill")
+    local cd = Instance.new("ClickDetector"); cd.MaxActivationDistance = 16; cd.Parent = housing
 
-    -- glowing top
-    part(plot, {
-        Name = "StationTop", Shape = Enum.PartType.Cylinder,
-        Size = Vector3.new(0.6, 5.2, 5.2),
-        CFrame = CFrame.new(pos + Vector3.new(0, 4.3, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-        Color = themeColor, Material = Enum.Material.Neon, CanCollide = false,
+    -- support frame
+    for _, dx in ipairs({ -2, 2 }) do
+        place(plot, plotCF, CFrame.new(lx + dx, 5, lz), {
+            Name = "DrillLeg", Size = Vector3.new(0.5, 7, 0.5),
+            Color = Color3.fromRGB(70, 70, 88), Material = Enum.Material.Metal, CanCollide = false,
+        })
+    end
+    place(plot, plotCF, CFrame.new(lx, 8.6, lz), {
+        Name = "DrillTop", Size = Vector3.new(5, 0.8, 1.4),
+        Color = Color3.fromRGB(70, 70, 88), Material = Enum.Material.Metal, CanCollide = false,
     })
 
-    -- (no PointLight — neon top glows on its own; keeps the plot lighting clean)
+    -- the bit (vertical cylinder, neon tip)
+    place(plot, plotCF, CFrame.new(lx, 4.2, lz) * CFrame.Angles(0, 0, math.rad(90)), {
+        Name = "DrillBit", Shape = Enum.PartType.Cylinder, Size = Vector3.new(5.5, 1.3, 1.3),
+        Color = Color3.fromRGB(120, 120, 140), Material = Enum.Material.Metal, CanCollide = false,
+    })
+    place(plot, plotCF, CFrame.new(lx, 3.2, lz), {
+        Name = "DrillGlow", Shape = Enum.PartType.Ball, Size = Vector3.new(1.6, 1.6, 1.6),
+        Color = ORANGE, Material = Enum.Material.Neon, CanCollide = false,
+    })
 
-    local cd = Instance.new("ClickDetector")
-    cd.MaxActivationDistance = 16
-    cd.Parent = base
-
-    local bb = billboard(base, 4.6, 60)
-    local t1 = Instance.new("TextLabel")
-    t1.Size = UDim2.new(1, 0, 0.55, 0); t1.BackgroundTransparency = 1
-    t1.Text = icon .. " " .. label; t1.Font = Enum.Font.GothamBold; t1.TextScaled = true
-    t1.TextColor3 = themeColor; t1.TextStrokeTransparency = 0.3; t1.Parent = bb
-    local t2 = Instance.new("TextLabel")
-    t2.Size = UDim2.new(1, 0, 0.4, 0); t2.Position = UDim2.new(0, 0, 0.58, 0)
-    t2.BackgroundTransparency = 1; t2.Text = "click to open"
-    t2.Font = Enum.Font.Gotham; t2.TextScaled = true
-    t2.TextColor3 = Color3.fromRGB(200, 200, 220); t2.TextStrokeTransparency = 0.4; t2.Parent = bb
-
-    return base
+    labelBillboard(housing, 6, "⛏ DRILL", "click to configure", ORANGE)
 end
 
-local function buildStations(plot, origin)
-    local backZ = origin.z - 20
-    buildStation(plot, Vector3.new(origin.x - 15, GROUND_Y, backZ), "Market",   "Market",   "💱", Color3.fromRGB(130, 255, 130))
-    buildStation(plot, Vector3.new(origin.x,      GROUND_Y, backZ), "Crafting", "Crafting", "🔧", Color3.fromRGB(100, 220, 255))
-    buildStation(plot, Vector3.new(origin.x + 15, GROUND_Y, backZ), "Shop",     "Shop",     "🛒", Color3.fromRGB(200, 130, 255))
-end
-
--- ── Gem nodes ───────────────────────────────────────────────────────────────
-local function buildNode(folder, pos, gemType)
-    local gd = GemTypes[gemType]
-    if not gd then return end
-
-    -- rocky base (decorative, no GemType so the client ignores it)
-    part(folder, {
-        Name = "NodeRock",
-        Size = Vector3.new(4.2, 2, 4.2),
-        Position = pos + Vector3.new(0, 1, 0),
-        Color = Color3.fromRGB(40, 40, 52), Material = Enum.Material.Slate,
+-- ── Crafting station ────────────────────────────────────────────────────────
+local function buildCraftingStation(plot, plotCF)
+    local lx, lz = -12, -8
+    local CYAN = Color3.fromRGB(100, 220, 255)
+    local base = place(plot, plotCF, CFrame.new(lx, 2, lz), {
+        Name = "Station_Crafting", Size = Vector3.new(5, 4, 5),
+        Color = Color3.fromRGB(24, 30, 42), Material = Enum.Material.Metal,
     })
-
-    -- the mineable crystal (BasePart child of GemNodes with GemType attribute).
-    -- Built from reliable primitives so it never depends on a remote mesh asset:
-    -- a tall faceted shard + a smaller cross shard for a clustered crystal look.
-    local crystal = part(folder, {
-        Name = "Node_" .. gemType,
-        Size = Vector3.new(2.4, 5.5, 2.4),
-        CFrame = CFrame.new(pos + Vector3.new(0, 4, 0)) * CFrame.Angles(math.rad(8), math.rad(45), math.rad(6)),
-        Color = gd.color, Material = Enum.Material.Neon, Transparency = 0.08,
+    base:SetAttribute("StationType", "Crafting")
+    local cd = Instance.new("ClickDetector"); cd.MaxActivationDistance = 16; cd.Parent = base
+    place(plot, plotCF, CFrame.new(lx, 4.3, lz) * CFrame.Angles(0, 0, math.rad(90)), {
+        Name = "StationTop", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 5.2, 5.2),
+        Color = CYAN, Material = Enum.Material.Neon, CanCollide = false,
     })
-    crystal:SetAttribute("GemType", gemType)
-
-    -- secondary shards (decorative, no GemType)
-    part(folder, {
-        Name = "NodeShard",
-        Size = Vector3.new(1.6, 3.6, 1.6),
-        CFrame = CFrame.new(pos + Vector3.new(1.3, 2.6, 0.4)) * CFrame.Angles(0, math.rad(30), math.rad(22)),
-        Color = gd.color, Material = Enum.Material.Neon, Transparency = 0.12, CanCollide = false,
-    })
-    part(folder, {
-        Name = "NodeShard",
-        Size = Vector3.new(1.3, 2.8, 1.3),
-        CFrame = CFrame.new(pos + Vector3.new(-1.2, 2.2, -0.5)) * CFrame.Angles(0, math.rad(15), math.rad(-20)),
-        Color = gd.color, Material = Enum.Material.Neon, Transparency = 0.12, CanCollide = false,
-    })
-
-    -- (no PointLight on nodes — the neon crystal is emissive on its own; many
-    --  dynamic lights were causing the in-plot lighting glitches)
-
-    local bb = billboard(crystal, 4, 52)
-    local t1 = Instance.new("TextLabel")
-    t1.Size = UDim2.new(1, 0, 0.6, 0); t1.BackgroundTransparency = 1
-    t1.Text = gd.displayName; t1.Font = Enum.Font.GothamBold; t1.TextScaled = true
-    t1.TextColor3 = gd.color; t1.TextStrokeTransparency = 0.35; t1.Parent = bb
-    local t2 = Instance.new("TextLabel")
-    t2.Size = UDim2.new(1, 0, 0.38, 0); t2.Position = UDim2.new(0, 0, 0.62, 0)
-    t2.BackgroundTransparency = 1; t2.Text = "⛏ click to mine"
-    t2.Font = Enum.Font.Gotham; t2.TextScaled = true
-    t2.TextColor3 = Color3.fromRGB(210, 210, 230); t2.TextStrokeTransparency = 0.4; t2.Parent = bb
-end
-
-local function buildNodes(folder, origin)
-    -- starter nodes along the left edge + one aspirational on the right
-    local leftX = origin.x - 20
-    buildNode(folder, Vector3.new(leftX, GROUND_Y, origin.z - 14), "Crystite")
-    buildNode(folder, Vector3.new(leftX, GROUND_Y, origin.z),      "Voidstone")
-    buildNode(folder, Vector3.new(leftX, GROUND_Y, origin.z + 14), "Neutronium")
-    buildNode(folder, Vector3.new(origin.x + 20, GROUND_Y, origin.z), "SingularityCore")
+    labelBillboard(base, 4.6, "🔧 CRAFTING", "click to open", CYAN)
 end
 
 -- ── Plot sign ───────────────────────────────────────────────────────────────
-local function buildSign(plot, origin, index)
-    local pole = part(plot, {
-        Name = "SignPole", Shape = Enum.PartType.Cylinder,
-        Size = Vector3.new(6, 0.4, 0.4),
-        CFrame = CFrame.new(origin.x, GROUND_Y + 3, origin.z + HALF + 1) * CFrame.Angles(0, 0, math.rad(90)),
+local function buildSign(plot, plotCF, index)
+    place(plot, plotCF, CFrame.new(0, 3, -(HALF + 1)) * CFrame.Angles(0, 0, math.rad(90)), {
+        Name = "SignPole", Shape = Enum.PartType.Cylinder, Size = Vector3.new(6, 0.4, 0.4),
         Color = FENCE_C, Material = Enum.Material.Metal, CanCollide = false,
     })
-    local board = part(plot, {
-        Name = "SignBoard",
-        Size = Vector3.new(10, 2.4, 0.4),
-        Position = Vector3.new(origin.x, GROUND_Y + 6.4, origin.z + HALF + 1),
+    local board = place(plot, plotCF, CFrame.new(0, 6.4, -(HALF + 1)), {
+        Name = "SignBoard", Size = Vector3.new(10, 2.4, 0.4),
         Color = Color3.fromRGB(16, 18, 30), Material = Enum.Material.SmoothPlastic, CanCollide = false,
     })
     local sg = Instance.new("SurfaceGui")
-    sg.Face = Enum.NormalId.Front; sg.CanvasSize = Vector2.new(400, 100)
-    sg.Parent = board
+    sg.Face = Enum.NormalId.Back; sg.CanvasSize = Vector2.new(400, 100); sg.Parent = board
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(1, 0, 1, 0); lbl.BackgroundTransparency = 1
     lbl.Text = "⚡ PLOT " .. index; lbl.Font = Enum.Font.GothamBold
-    lbl.TextColor3 = FENCE_T; lbl.TextScaled = true
-    lbl.Name = "PlotLabel"; lbl.Parent = sg
+    lbl.TextColor3 = FENCE_T; lbl.TextScaled = true; lbl.Name = "PlotLabel"; lbl.Parent = sg
     return lbl
 end
 
--- ── NPC Gem Exchange kiosk (central, sell-only market) ──────────────────────
-local function buildGemExchange()
+-- ── Central hub: Market + Shop + Gem Exchange (NPC) ──────────────────────────
+local function buildStationPillar(model, pos, stationType, title, subtitle, color)
+    local base = part(model, {
+        Name = "Station_" .. stationType, Size = Vector3.new(5, 4, 5),
+        Position = pos + Vector3.new(0, 2, 0),
+        Color = Color3.fromRGB(24, 26, 40), Material = Enum.Material.Metal,
+    })
+    base:SetAttribute("StationType", stationType)
+    part(model, {
+        Name = "StationTop", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 5.2, 5.2),
+        CFrame = CFrame.new(pos + Vector3.new(0, 4.3, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+        Color = color, Material = Enum.Material.Neon, CanCollide = false,
+    })
+    local cd = Instance.new("ClickDetector"); cd.MaxActivationDistance = 16; cd.Parent = base
+    labelBillboard(base, 4.6, title, subtitle, color)
+end
+
+local function buildCenterHub()
     local model = Instance.new("Model"); model.Name = "GemExchange"
-    local pos = Vector3.new(0, GROUND_Y, 0)
+
+    -- raised platform
+    part(model, {
+        Name = "HubPad", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1, 52, 52),
+        CFrame = CFrame.new(CENTER + Vector3.new(0, 0.4, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+        Color = Color3.fromRGB(34, 32, 46), Material = Enum.Material.SmoothPlastic,
+    })
+    part(model, {
+        Name = "HubRing", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 53, 53),
+        CFrame = CFrame.new(CENTER + Vector3.new(0, 0.9, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+        Color = Color3.fromRGB(255, 170, 90), Material = Enum.Material.Neon, CanCollide = false,
+    })
+
+    -- Gem Exchange robot vendor at the center
     local PURPLE = Color3.fromRGB(255, 170, 90)
-
-    -- raised circular platform
-    part(model, {
-        Name = "ExchangePad", Shape = Enum.PartType.Cylinder,
-        Size = Vector3.new(1, 18, 18),
-        CFrame = CFrame.new(pos + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-        Color = Color3.fromRGB(30, 26, 40), Material = Enum.Material.SmoothPlastic,
-    })
-    part(model, {
-        Name = "ExchangeRing", Shape = Enum.PartType.Cylinder,
-        Size = Vector3.new(0.4, 18.6, 18.6),
-        CFrame = CFrame.new(pos + Vector3.new(0, 1.0, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-        Color = PURPLE, Material = Enum.Material.Neon, CanCollide = false,
-    })
-
-    -- counter / console (the clickable station)
-    local desk = part(model, {
-        Name = "ExchangeDesk",
-        Size = Vector3.new(9, 4, 2.6),
-        Position = pos + Vector3.new(0, 2.4, 4),
-        Color = Color3.fromRGB(26, 24, 38), Material = Enum.Material.Metal,
-    })
-    desk:SetAttribute("StationType", "GemMarket")
-    part(model, {
-        Name = "DeskGlow",
-        Size = Vector3.new(9.2, 0.4, 2.8),
-        Position = pos + Vector3.new(0, 4.5, 4),
-        Color = PURPLE, Material = Enum.Material.Neon, CanCollide = false,
-    })
-    local cdDesk = Instance.new("ClickDetector"); cdDesk.MaxActivationDistance = 18; cdDesk.Parent = desk
-
-    -- simple robot vendor behind the counter
     local torso = part(model, {
-        Name = "VendorTorso",
-        Size = Vector3.new(3.4, 4, 2),
-        Position = pos + Vector3.new(0, 4, 0),
+        Name = "VendorTorso", Size = Vector3.new(3.4, 4, 2),
+        Position = CENTER + Vector3.new(0, 4, 0),
         Color = Color3.fromRGB(60, 60, 85), Material = Enum.Material.Metal,
     })
     torso:SetAttribute("StationType", "GemMarket")
     local cdBot = Instance.new("ClickDetector"); cdBot.MaxActivationDistance = 18; cdBot.Parent = torso
-
     part(model, {
-        Name = "VendorHead",
-        Size = Vector3.new(2.4, 2, 2.2),
-        Position = pos + Vector3.new(0, 7, 0),
+        Name = "VendorHead", Size = Vector3.new(2.4, 2, 2.2),
+        Position = CENTER + Vector3.new(0, 7, 0),
         Color = Color3.fromRGB(75, 75, 105), Material = Enum.Material.Metal,
     })
-    -- glowing visor
     part(model, {
-        Name = "VendorVisor",
-        Size = Vector3.new(2.0, 0.7, 0.4),
-        Position = pos + Vector3.new(0, 7.1, -1.05),
+        Name = "VendorVisor", Size = Vector3.new(2.0, 0.7, 0.4),
+        Position = CENTER + Vector3.new(0, 7.1, -1.05),
         Color = PURPLE, Material = Enum.Material.Neon, CanCollide = false,
     })
-    -- shoulders/arms
-    for _, sx in ipairs({ -2.3, 2.3 }) do
-        part(model, {
-            Name = "VendorArm",
-            Size = Vector3.new(0.9, 3.4, 0.9),
-            Position = pos + Vector3.new(sx, 4, 0),
-            Color = Color3.fromRGB(55, 55, 80), Material = Enum.Material.Metal,
-        })
-    end
-
     local light = Instance.new("PointLight")
-    light.Color = PURPLE; light.Range = 16; light.Brightness = 1.6
-    light.Parent = torso
+    light.Color = PURPLE; light.Range = 18; light.Brightness = 1.6; light.Parent = torso
+    labelBillboard(torso, 7, "💹 GEM EXCHANGE", "click to sell gems", PURPLE)
 
-    -- floating holographic sign
-    local sign = part(model, {
-        Name = "ExchangeSign",
-        Size = Vector3.new(0.5, 0.5, 0.5),
-        Position = pos + Vector3.new(0, 11, 0),
-        Transparency = 1, CanCollide = false,
-    })
-    local bb = billboard(sign, 0, 72)
-    bb.MaxDistance = 120
-    local t1 = Instance.new("TextLabel")
-    t1.Size = UDim2.new(1, 0, 0.55, 0); t1.BackgroundTransparency = 1
-    t1.Text = "💹 GEM EXCHANGE"; t1.Font = Enum.Font.GothamBold; t1.TextScaled = true
-    t1.TextColor3 = PURPLE; t1.TextStrokeTransparency = 0.3; t1.Parent = bb
-    local t2 = Instance.new("TextLabel")
-    t2.Size = UDim2.new(1, 0, 0.4, 0); t2.Position = UDim2.new(0, 0, 0.58, 0)
-    t2.BackgroundTransparency = 1; t2.Text = "click to sell gems"
-    t2.Font = Enum.Font.Gotham; t2.TextScaled = true
-    t2.TextColor3 = Color3.fromRGB(210, 200, 225); t2.TextStrokeTransparency = 0.4; t2.Parent = bb
+    -- Market + Shop pillars flanking the vendor
+    buildStationPillar(model, CENTER + Vector3.new(-13, 0, 8),  "Market", "💱 MARKET", "click to trade", Color3.fromRGB(130, 255, 130))
+    buildStationPillar(model, CENTER + Vector3.new(13, 0, 8),   "Shop",   "🛒 SHOP",   "click to open",  Color3.fromRGB(200, 130, 255))
 
-    model.PrimaryPart = desk
     model.Parent = workspace
     return model
 end
 
--- ── Lighting polish ─────────────────────────────────────────────────────────
+-- ── Lighting (keep the dark floor mist, but no flicker) ─────────────────────
 local function polishLighting()
-    -- ShadowMap (not Future/Voxel) avoids the dynamic-light flicker that was
-    -- glitching inside the plots, while still lighting the marble cleanly.
     pcall(function() Lighting.Technology = Enum.Technology.ShadowMap end)
-    Lighting.ClockTime         = 14              -- bright afternoon, clean look
-    Lighting.GeographicLatitude = 20
-    Lighting.Brightness        = 2.4
-    Lighting.EnvironmentDiffuseScale  = 0.55
+    Lighting.ClockTime          = 17.6           -- low sun for the moody look
+    Lighting.GeographicLatitude  = 30
+    Lighting.Brightness          = 2
+    Lighting.EnvironmentDiffuseScale  = 0.4
     Lighting.EnvironmentSpecularScale = 0.4
-    Lighting.OutdoorAmbient    = Color3.fromRGB(150, 152, 165)
-    Lighting.Ambient           = Color3.fromRGB(95, 96, 110)
+    Lighting.OutdoorAmbient     = Color3.fromRGB(95, 98, 120)
+    Lighting.Ambient            = Color3.fromRGB(55, 56, 72)
 
-    -- Tone the bloom way down so neon accents glow subtly instead of blowing out
     local bloom = Lighting:FindFirstChild("WorldBloom")
-    if not bloom then
-        bloom = Instance.new("BloomEffect"); bloom.Name = "WorldBloom"; bloom.Parent = Lighting
-    end
-    bloom.Intensity = 0.25; bloom.Size = 16; bloom.Threshold = 1.6
+    if not bloom then bloom = Instance.new("BloomEffect"); bloom.Name = "WorldBloom"; bloom.Parent = Lighting end
+    bloom.Intensity = 0.3; bloom.Size = 18; bloom.Threshold = 1.5
 
-    -- Light haze for depth, but not so much it murks up the scene
+    -- the dark mist that hangs on the floor
     local atmo = Lighting:FindFirstChild("WorldAtmosphere")
-    if not atmo then
-        atmo = Instance.new("Atmosphere"); atmo.Name = "WorldAtmosphere"; atmo.Parent = Lighting
-    end
-    atmo.Density = 0.18
-    atmo.Haze    = 0.6
-    atmo.Color   = Color3.fromRGB(210, 215, 230)
-    atmo.Decay   = Color3.fromRGB(120, 125, 160)
+    if not atmo then atmo = Instance.new("Atmosphere"); atmo.Name = "WorldAtmosphere"; atmo.Parent = Lighting end
+    atmo.Density = 0.36
+    atmo.Offset  = 0.1
+    atmo.Haze    = 1.8
+    atmo.Color   = Color3.fromRGB(170, 178, 205)
+    atmo.Decay   = Color3.fromRGB(70, 78, 110)
 end
 
 -- ── Public build ────────────────────────────────────────────────────────────
-local signLabels = {}  -- plotIndex -> SurfaceGui TextLabel
+local signLabels = {}
 
 function WorldBuilder.Build()
-    -- Idempotent: clear anything we built before
     for _, name in ipairs({ "Plots", "GemNodes", "WorldGround", "GemExchange" }) do
         local existing = workspace:FindFirstChild(name)
         if existing then existing:Destroy() end
     end
 
-    -- Ground baseplate so nobody falls into the void
-    local ground = part(workspace, {
-        Name = "WorldGround",
-        Size = Vector3.new(420, 4, 320),
+    -- ground baseplate (big enough for the ring)
+    part(workspace, {
+        Name = "WorldGround", Size = Vector3.new(420, 4, 420),
         Position = Vector3.new(0, GROUND_Y - 3, 0),
-        Color = Color3.fromRGB(22, 24, 34),
-        Material = Enum.Material.Slate,
+        Color = Color3.fromRGB(22, 24, 34), Material = Enum.Material.Slate,
     })
-    ground.Parent = workspace
 
     local plotsFolder = Instance.new("Folder"); plotsFolder.Name = "Plots"; plotsFolder.Parent = workspace
-    local nodesFolder = Instance.new("Folder"); nodesFolder.Name = "GemNodes"; nodesFolder.Parent = workspace
 
     for i = 1, 6 do
-        local origin = plotOrigin(i)
+        local cf = plotCFrame(i)
         local plot = Instance.new("Model"); plot.Name = "Plot" .. i; plot.Parent = plotsFolder
 
-        buildBase(plot, origin)
-        buildFence(plot, origin)
-        local spawn = buildSpawn(plot, origin)
-        buildStations(plot, origin)
-        buildNodes(nodesFolder, origin)
-        signLabels[i] = buildSign(plot, origin, i)
+        buildBase(plot, cf)
+        buildFence(plot, cf)
+        local spawn = buildSpawn(plot, cf)
+        buildDrill(plot, cf)
+        buildCraftingStation(plot, cf)
+        signLabels[i] = buildSign(plot, cf, i)
 
         plot.PrimaryPart = spawn
     end
 
-    buildGemExchange()
+    buildCenterHub()
     polishLighting()
     return plotsFolder
 end
 
--- Update a plot's sign with the owner's name (called when a plot is assigned)
 function WorldBuilder.SetPlotOwner(index, name)
     local lbl = signLabels[index]
     if lbl then

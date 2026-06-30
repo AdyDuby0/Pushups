@@ -158,8 +158,8 @@ local function findUpgradeCfg(key)
     return nil
 end
 
--- Returns the client-facing list of repeatable upgrades (income + drill) with
--- live levels/costs. Each entry carries `kind` so the UI can label it correctly.
+-- Returns the client-facing list of repeatable income upgrades (mining-speed
+-- upgrades now live on the drill — see DrillManager).
 function PowerCoreManager.GetCoreUpgradeInfo(player)
     local data = DataManager.Get(player)
     local info = {}
@@ -175,22 +175,6 @@ function PowerCoreManager.GetCoreUpgradeInfo(player)
             level         = level,
             bonusPerLevel = cfg.bonusPerLevel,
             nextCost      = math.floor(cfg.baseCost * cfg.growth ^ level),
-        })
-    end
-
-    for _, cfg in ipairs(GameConfig.MINING_UPGRADES) do
-        local level = (data.coreUpgrades and data.coreUpgrades[cfg.key]) or 0
-        local atMax = cfg.maxLevel ~= nil and level >= cfg.maxLevel
-        table.insert(info, {
-            kind              = "mining",
-            key               = cfg.key,
-            name              = cfg.name,
-            icon              = cfg.icon,
-            level             = level,
-            reductionPerLevel = cfg.reductionPerLevel,
-            maxLevel          = cfg.maxLevel,
-            atMax             = atMax,
-            nextCost          = atMax and 0 or math.floor(cfg.baseCost * cfg.growth ^ level),
         })
     end
 

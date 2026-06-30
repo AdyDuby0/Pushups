@@ -182,6 +182,7 @@ function MarketUI.Init(playerGui, initData, RF)
     toggleBtn.TextColor3      = Color3.fromRGB(130, 255, 130)
     toggleBtn.Font            = Enum.Font.GothamBold
     toggleBtn.TextScaled      = true
+    toggleBtn.Visible         = false  -- physical-only: opened from the center Market station
     toggleBtn.Parent          = gui
     corner(toggleBtn, 6)
 

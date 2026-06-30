@@ -26,8 +26,11 @@ local RF = {
     CreateListing   = RemotesFolder:WaitForChild("CreateListing"),
     CancelListing   = RemotesFolder:WaitForChild("CancelListing"),
     BuyListing      = RemotesFolder:WaitForChild("BuyListing"),
-    StartExtraction = RemotesFolder:WaitForChild("StartExtraction"),
-    StopExtraction  = RemotesFolder:WaitForChild("StopExtraction"),
+    StartDrill        = RemotesFolder:WaitForChild("StartDrill"),
+    StopDrill         = RemotesFolder:WaitForChild("StopDrill"),
+    SetDrillGem       = RemotesFolder:WaitForChild("SetDrillGem"),
+    UpgradeDrillDepth = RemotesFolder:WaitForChild("UpgradeDrillDepth"),
+    GetDrillInfo      = RemotesFolder:WaitForChild("GetDrillInfo"),
     BuyCoreUpgrade  = RemotesFolder:WaitForChild("BuyCoreUpgrade"),
     CraftGear       = RemotesFolder:WaitForChild("CraftGear"),
     EquipGear       = RemotesFolder:WaitForChild("EquipGear"),
@@ -46,8 +49,8 @@ local MarketUI         = require(Modules:WaitForChild("MarketUI"))
 local CraftingUI       = require(Modules:WaitForChild("CraftingUI"))
 local ShopUI           = require(Modules:WaitForChild("ShopUI"))
 local GemMarketUI      = require(Modules:WaitForChild("GemMarketUI"))
+local DrillUI          = require(Modules:WaitForChild("DrillUI"))
 local TutorialManager  = require(Modules:WaitForChild("TutorialManager"))
-local NodeFeedback     = require(Modules:WaitForChild("NodeFeedback"))
 
 if not player.Character then player.CharacterAdded:Wait() end
 task.wait(2)
@@ -64,6 +67,7 @@ MarketUI.Init(playerGui, initData, RF)
 CraftingUI.Init(playerGui, initData, RF)
 ShopUI.Init(playerGui, initData, RF)
 GemMarketUI.Init(playerGui, initData, RF)
+DrillUI.Init(playerGui, initData, RF)
 TutorialManager.Start(playerGui, initData)
 
 -- ── Server event hooks ────────────────────────────────────────────────────────
@@ -73,6 +77,7 @@ R.UpdateHUD.OnClientEvent:Connect(function(hudData)
     if hudData.credits then
         CraftingUI.UpdateCredits(hudData.credits)
         PlotUI.UpdateCredits(hudData.credits)
+        DrillUI.UpdateCredits(hudData.credits)
     end
     if hudData.gemCurrency then
         ShopUI.UpdateGemCurrency(hudData.gemCurrency)
@@ -84,6 +89,7 @@ R.UpdateInventory.OnClientEvent:Connect(function(gems)
     MarketUI.UpdateGems(gems)
     CraftingUI.UpdateGems(gems)
     GemMarketUI.UpdateGems(gems)
+    DrillUI.UpdateGems(gems)
 end)
 
 R.UpdateGemMarket.OnClientEvent:Connect(function(snap)
@@ -99,7 +105,7 @@ R.UpdateLeaderboard.OnClientEvent:Connect(function(board)
 end)
 
 local firstMine = true
--- GemExtracted now fires once per completed mine round: (gemType, heldCount, nextMineTime)
+-- GemExtracted fires once per completed drill round: (gemType, heldCount, nextMineTime)
 R.GemExtracted.OnClientEvent:Connect(function(gemType, heldCount, nextMineTime)
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local GemTypes = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GemTypes"))
@@ -112,8 +118,8 @@ R.GemExtracted.OnClientEvent:Connect(function(gemType, heldCount, nextMineTime)
         TutorialManager.OnFirstExtraction()
     end
 
-    -- Restart the progress bar for the next round
-    NodeFeedback.OnRoundComplete(nextMineTime or 120)
+    -- Reset the drill's progress bar for the next round
+    DrillUI.OnRound(gemType, nextMineTime or 120)
 end)
 
 R.Notification.OnClientEvent:Connect(function(msg)
@@ -124,77 +130,6 @@ R.UpdatePotions.OnClientEvent:Connect(function(activePotions)
     HUD.UpdatePotions(activePotions)
 end)
 
--- ── Gem node click to extract ─────────────────────────────────────────────────
--- Every part inside Workspace.GemNodes gets a ClickDetector so it shows a hover
--- cursor and is obviously clickable. Clicking toggles extraction on that node.
-
-local mining     = false
-local currentNode = nil
-
-local function onNodeClicked(node)
-    if not node:GetAttribute("GemType") then return end
-
-    if not mining then
-        mining      = true
-        currentNode = node
-        local gemType = node:GetAttribute("GemType")
-        local ok, mineTime = RF.StartExtraction:InvokeServer(node)
-        if ok then
-            local ReplicatedStorage = game:GetService("ReplicatedStorage")
-            local GemTypes = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GemTypes"))
-            local gd = GemTypes[gemType]
-            NodeFeedback.Attach(node, gemType, mineTime or 120)
-            HUD.ShowNotification("Mining " .. (gd and gd.displayName or gemType) .. "… click again to stop.")
-        else
-            mining      = false
-            currentNode = nil
-            HUD.ShowNotification("Could not start: " .. tostring(mineTime))
-        end
-    else
-        mining      = false
-        currentNode = nil
-        RF.StopExtraction:InvokeServer()
-        NodeFeedback.Detach()
-        HUD.ShowNotification("Mining stopped.")
-    end
-end
-
-local wiredNodes = {}  -- part -> true, so we wire each node's click exactly once
-
-local function setupNode(part)
-    if not part:IsA("BasePart") then return end
-    if not part:GetAttribute("GemType") then return end
-    if wiredNodes[part] then return end
-    wiredNodes[part] = true
-
-    -- Reuse a ClickDetector if one already exists (e.g. added by hand); else create it
-    local cd = part:FindFirstChildOfClass("ClickDetector")
-    if not cd then
-        cd = Instance.new("ClickDetector")
-        cd.MaxActivationDistance = 40
-        cd.Parent = part
-    end
-    cd.MouseClick:Connect(function()
-        onNodeClicked(part)
-    end)
-end
-
-local wiredCount = 0
-local nodesFolder = workspace:WaitForChild("GemNodes", 30)
-if nodesFolder then
-    for _, part in ipairs(nodesFolder:GetChildren()) do
-        setupNode(part)
-        if wiredNodes[part] then wiredCount += 1 end
-    end
-    -- Wire newly added nodes (e.g. placed by level scripts)
-    nodesFolder.ChildAdded:Connect(function(part)
-        task.wait()
-        setupNode(part)
-    end)
-else
-    warn("[GemPowerCore] Workspace.GemNodes folder not found — gem nodes won't be clickable.")
-end
-
 -- ── Physical station buttons (Market / Crafting / Shop) ───────────────────────
 -- WorldBuilder tags each pedestal with a StationType attribute and a
 -- ClickDetector. Clicking one toggles the matching UI panel.
@@ -204,6 +139,7 @@ local stationOpeners = {
     Crafting  = function() CraftingUI.Toggle() end,
     Shop      = function() ShopUI.Toggle() end,
     GemMarket = function() GemMarketUI.Toggle() end,
+    Drill     = function() DrillUI.Toggle() end,
 }
 
 local wiredStations = {}
@@ -290,4 +226,4 @@ task.spawn(function()
     end
 end)
 
-print("[GemPowerCore] Client ready. Wired " .. wiredCount .. " gem node(s).")
+print("[GemPowerCore] Client ready.")

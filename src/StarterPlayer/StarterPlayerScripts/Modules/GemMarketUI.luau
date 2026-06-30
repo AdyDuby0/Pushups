@@ -203,6 +203,7 @@ function GemMarketUI.Init(playerGui, initData, RF)
     toggleBtn.TextColor3 = Color3.fromRGB(255, 200, 120)
     toggleBtn.Font = Enum.Font.GothamBold
     toggleBtn.TextScaled = true
+    toggleBtn.Visible = false  -- physical-only: opened from the center Exchange NPC
     toggleBtn.Parent = gui
     corner(toggleBtn, 6)
 

@@ -15,6 +15,8 @@ local DEFAULT_DATA = {
     coreSlots       = {},
     -- Repeatable core upgrades: { upgradeKey = level }
     coreUpgrades    = { overclock = 0, surge = 0, singularity = 0, drilltuning = 0, plasmabore = 0 },
+    -- The plot drill: which gem it's set to mine, and how deep it can reach.
+    drill           = { gemType = "Crystite", depth = 1 },
     -- Gear: one piece per category, nil means nothing equipped
     gear = {
         conductor   = nil,   -- { tier = N } or nil

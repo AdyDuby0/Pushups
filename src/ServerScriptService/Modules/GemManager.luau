@@ -60,15 +60,12 @@ local function effectiveMineTime(data, baseTime)
     return math.max(baseTime * (1 - reduction), 1)
 end
 
-function GemManager.StartMining(player, node)
+-- Start the drill mining a given gem type. Each completed round adds 1 shard
+-- (up to the inventory cap) and auto-loops until stopped.
+function GemManager.StartMining(player, gemType)
     if sessions[player.UserId] then
         return false, "Already mining"
     end
-    if not node or not node:IsA("BasePart") then
-        return false, "Invalid node"
-    end
-
-    local gemType = node:GetAttribute("GemType")
     if not gemType or not GemTypes[gemType] then
         return false, "Unknown gem type"
     end
@@ -96,14 +93,13 @@ function GemManager.StartMining(player, node)
 
             if Remotes then
                 Remotes.UpdateInventory:FireClient(player, data.gems)
-                -- held after this round (for cap display)
                 local newHeld = data.gems[gemType] or 0
                 Remotes.GemExtracted:FireClient(player, gemType, newHeld, waitTime)
             end
         end
     end)
 
-    sessions[player.UserId] = { node = node, gemType = gemType, thread = thread }
+    sessions[player.UserId] = { gemType = gemType, thread = thread }
     return true, initTime
 end
 
@@ -113,8 +109,11 @@ function GemManager.StopMining(player)
     sessions[player.UserId] = nil
 end
 
--- Backward-compat alias used by server Main
-GemManager.StartExtraction = GemManager.StartMining
-GemManager.StopExtraction  = GemManager.StopMining
+function GemManager.IsMining(player)
+    return sessions[player.UserId] ~= nil
+end
+
+-- Backward-compat alias
+GemManager.StopExtraction = GemManager.StopMining
 
 return GemManager

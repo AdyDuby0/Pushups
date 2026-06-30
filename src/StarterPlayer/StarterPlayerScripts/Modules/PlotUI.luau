@@ -467,7 +467,7 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
 
     local upgLbl = Instance.new("TextLabel")
     upgLbl.Size = UDim2.new(1, 0, 0, 18); upgLbl.Position = UDim2.new(0, 4, 0, 48)
-    upgLbl.BackgroundTransparency = 1; upgLbl.Text = "⚡ CORE & ⛏ DRILL UPGRADES"
+    upgLbl.BackgroundTransparency = 1; upgLbl.Text = "⚡ CORE UPGRADES"
     upgLbl.TextColor3 = Color3.fromRGB(255, 210, 90); upgLbl.Font = Enum.Font.GothamBold
     upgLbl.TextScaled = true; upgLbl.TextXAlignment = Enum.TextXAlignment.Left
     upgLbl.Parent = upgradesTab

@@ -7,10 +7,10 @@ local TweenService = game:GetService("TweenService")
 local TutorialManager = {}
 
 local STEPS = {
-    "Walk to a glowing gem node on the map and CLICK it to extract.",
-    "Nice! Now open your ⚡ Power Core panel on the left.",
+    "Walk to your ⛏ DRILL, click it, then press Start Drilling to mine gems.",
+    "Nice! Now walk up to your ⚡ Power Core to open its panel.",
     "Click SLOT next to your gem to start generating income.",
-    "Your core is running! Check 🔧 Crafting to build gear that boosts output.",
+    "Your core is running! Click the 🔧 Crafting station to build gear that boosts output.",
 }
 
 local step       = 0
