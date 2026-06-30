@@ -7,6 +7,7 @@ local GemTypes   = require(ReplicatedStorage.Config.GemTypes)
 
 local MonetizationManager = {}
 local DataManager
+local Remotes
 local passCache = {}  -- userId -> { passId -> bool }
 
 local PRODUCTS  = GameConfig.PRODUCTS
@@ -26,8 +27,9 @@ local PRODUCT_HANDLERS = {
     [PRODUCTS.GEM_LARGE]  = function(data) data.gemCurrency = (data.gemCurrency or 0) + 2000 end,
 }
 
-function MonetizationManager.Init(dm)
+function MonetizationManager.Init(dm, remotes)
     DataManager = dm
+    Remotes     = remotes
 
     MarketplaceService.ProcessReceipt = function(info)
         local player = Players:GetPlayerByUserId(info.PlayerId)
@@ -40,6 +42,14 @@ function MonetizationManager.Init(dm)
         if handler then
             handler(data)
             DataManager.Save(player)
+            -- Refresh the player's balances immediately (💰 top bar + 💎 shop)
+            if Remotes then
+                Remotes.UpdateHUD:FireClient(player, {
+                    credits     = data.credits,
+                    gemCurrency = data.gemCurrency or 0,
+                })
+                Remotes.UpdateInventory:FireClient(player, data.gems)
+            end
             return Enum.ProductPurchaseDecision.PurchaseGranted
         end
 

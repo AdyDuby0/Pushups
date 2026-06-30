@@ -71,7 +71,7 @@ PowerCoreManager.SetMonetization(MonetizationManager)
 MarketManager.Init(DataManager, R)
 GearManager.Init(DataManager)
 PotionManager.Init(DataManager)
-MonetizationManager.Init(DataManager)
+MonetizationManager.Init(DataManager, R)
 PowerCoreModel.StartAnimation()
 
 -- ── Remote handlers ───────────────────────────────────────────────────────────

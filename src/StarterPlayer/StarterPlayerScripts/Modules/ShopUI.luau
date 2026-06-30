@@ -199,6 +199,27 @@ function ShopUI.Init(playerGui, initData, RF)
         end)
     end
 
+    -- ── BUY GEMS (💎 with Robux) ──────────────────────────────────────────────
+
+    sectionHdr(scroll, "💎  BUY GEMS", Color3.fromRGB(160, 110, 255))
+
+    for _, pack in ipairs(GameConfig.GEM_PACKS) do
+        local row, btn = makeRow(scroll, 70)
+        lbl(row, "💎 " .. fmt(pack.amount) .. " Gems",
+            UDim2.new(0.6, -16, 0.45, 0), UDim2.new(0, 10, 0, 4),
+            Color3.fromRGB(210, 170, 255), Enum.Font.GothamBold)
+        lbl(row, pack.bonus or "Premium currency",
+            UDim2.new(0.6, -16, 0.38, 0), UDim2.new(0, 10, 0.48, 0),
+            Color3.fromRGB(170, 160, 210))
+
+        btn.BackgroundColor3 = Color3.fromRGB(110, 60, 170)
+        btn.Text = "R$" .. pack.robux
+        local capProductId = GameConfig.PRODUCTS[pack.productKey]
+        btn.MouseButton1Click:Connect(function()
+            MarketplaceService:PromptProductPurchase(player, capProductId)
+        end)
+    end
+
     -- ── PREMIUM BOOSTS ───────────────────────────────────────────────────────
 
     sectionHdr(scroll, "⚡  PREMIUM BOOSTS", Color3.fromRGB(180, 100, 255))

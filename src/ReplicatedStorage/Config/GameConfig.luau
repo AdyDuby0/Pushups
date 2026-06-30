@@ -52,6 +52,13 @@ return {
         GEM_MEDIUM      = 0,   -- 500 💎  (R$399)
         GEM_LARGE       = 0,   -- 2000 💎 (R$1,199)
     },
+    -- 💎 packs purchasable with Robux (shown in the Shop's "Buy Gems" section).
+    -- productKey maps into PRODUCTS above; robux is the display price.
+    GEM_PACKS = {
+        { productKey = "GEM_SMALL",  amount = 100,  robux = 99   },
+        { productKey = "GEM_MEDIUM", amount = 500,  robux = 399, bonus = "+11% bonus" },
+        { productKey = "GEM_LARGE",  amount = 2000, robux = 1199, bonus = "+68% bonus — best value" },
+    },
     -- 1 💎 → this many 💰 when converting in the shop
     GEM_TO_CREDITS_RATE = 5000,
 
