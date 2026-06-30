@@ -15,7 +15,7 @@ for _, item in ipairs(GameConfig.PREMIUM_ITEMS) do
 end
 
 local HUD = {}
-local creditsLabel, incomeLabel, gemCurrLabel, leaderboardList, notifLabel, potionBar
+local creditsLabel, incomeLabel, gemCurrLabel, notifLabel, potionBar
 
 local function fmt(n)
     n = math.floor(n)
@@ -53,10 +53,10 @@ function HUD.Init(playerGui, initData, hooks)
 
     local BOX_W = 236
 
-    -- ── Credits box (💰) — bottom-right corner ───────────────────────────────
+    -- ── Credits box (💰) — bottom-right ──────────────────────────────────────
     local creditBox = makeFrame(gui, {
         Size = UDim2.new(0, BOX_W, 0, 52),
-        Position = UDim2.new(1, -8, 1, -8), AnchorPoint = Vector2.new(1, 1),
+        Position = UDim2.new(1, -8, 1, -48), AnchorPoint = Vector2.new(1, 1),
         BackgroundColor3 = Color3.fromRGB(18, 18, 36), BackgroundTransparency = 0.1, BorderSizePixel = 0,
     })
     corner(creditBox, 6)
@@ -83,7 +83,7 @@ function HUD.Init(playerGui, initData, hooks)
     -- ── Premium currency box (💎) — above credits ────────────────────────────
     local gemBox = makeFrame(gui, {
         Size = UDim2.new(0, BOX_W, 0, 42),
-        Position = UDim2.new(1, -8, 1, -66), AnchorPoint = Vector2.new(1, 1),
+        Position = UDim2.new(1, -8, 1, -106), AnchorPoint = Vector2.new(1, 1),
         BackgroundColor3 = Color3.fromRGB(20, 10, 40), BackgroundTransparency = 0.1, BorderSizePixel = 0,
     })
     corner(gemBox, 6)
@@ -102,7 +102,7 @@ function HUD.Init(playerGui, initData, hooks)
     -- ── Teleport buttons — above the money ───────────────────────────────────
     local tpRow = makeFrame(gui, {
         Size = UDim2.new(0, BOX_W, 0, 40),
-        Position = UDim2.new(1, -8, 1, -114), AnchorPoint = Vector2.new(1, 1),
+        Position = UDim2.new(1, -8, 1, -154), AnchorPoint = Vector2.new(1, 1),
         BackgroundTransparency = 1, BorderSizePixel = 0,
     })
     local function tpButton(text, xScale, color, fn)
@@ -116,42 +116,18 @@ function HUD.Init(playerGui, initData, hooks)
         return b
     end
     tpButton("🏠 My Plot", 0,    Color3.fromRGB(35, 70, 120), hooks.teleportPlot)
-    tpButton("🏬 District", 0.51, Color3.fromRGB(90, 50, 130), hooks.teleportCenter)
+    tpButton("🛒 Shop",    0.51, Color3.fromRGB(90, 50, 130), hooks.teleportCenter)
 
-    -- ── Leaderboard ──────────────────────────────────────────────────────────
-    local lbPanel = makeFrame(gui, {
-        Size = UDim2.new(0, 234, 0, 298),
-        Position = UDim2.new(1, -242, 0, 64),
-        BackgroundColor3 = Color3.fromRGB(8, 8, 18),
-        BackgroundTransparency = 0.15, BorderSizePixel = 0,
+    -- description above the teleport buttons
+    makeLabel(gui, {
+        Size = UDim2.new(0, BOX_W, 0, 18),
+        Position = UDim2.new(1, -8, 1, -198), AnchorPoint = Vector2.new(1, 1),
+        BackgroundTransparency = 1, Text = "TELEPORT TO",
+        TextColor3 = Color3.fromRGB(170, 170, 200), Font = Enum.Font.GothamBold,
+        TextScaled = true, TextXAlignment = Enum.TextXAlignment.Right,
     })
-    corner(lbPanel, 10)
 
-    local lbTitle = makeLabel(lbPanel, {
-        Size = UDim2.new(1, 0, 0, 38),
-        BackgroundColor3 = Color3.fromRGB(30, 10, 60),
-        BackgroundTransparency = 0, BorderSizePixel = 0,
-        Text = "⚡  POWER RANKINGS",
-        TextColor3 = Color3.fromRGB(200, 150, 255),
-        Font = Enum.Font.GothamBold, TextScaled = true,
-    })
-    corner(lbTitle, 10)
-
-    local lbScroll = Instance.new("ScrollingFrame")
-    lbScroll.Size = UDim2.new(1, -8, 1, -46)
-    lbScroll.Position = UDim2.new(0, 4, 0, 42)
-    lbScroll.BackgroundTransparency = 1
-    lbScroll.BorderSizePixel = 0
-    lbScroll.ScrollBarThickness = 0
-    lbScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-    lbScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    lbScroll.Parent = lbPanel
-    leaderboardList = lbScroll
-
-    local ll = Instance.new("UIListLayout")
-    ll.SortOrder = Enum.SortOrder.LayoutOrder
-    ll.Padding = UDim.new(0, 3)
-    ll.Parent = lbScroll
+    -- (Rankings now use the classic Roblox player list via leaderstats.)
 
     -- ── Notification (center, just below top bar) ─────────────────────────
     notifLabel = makeLabel(gui, {
@@ -189,60 +165,6 @@ function HUD.Update(hudData)
     if hudData.credits     and creditsLabel  then creditsLabel.Text  = fmt(hudData.credits) end
     if hudData.incomeRate  and incomeLabel   then incomeLabel.Text   = "+" .. fmt(hudData.incomeRate) .. "/s" end
     if hudData.gemCurrency and gemCurrLabel  then gemCurrLabel.Text  = fmt(hudData.gemCurrency) end
-end
-
-function HUD.UpdateLeaderboard(board)
-    if not leaderboardList then return end
-    for _, c in ipairs(leaderboardList:GetChildren()) do
-        if c:IsA("Frame") then c:Destroy() end
-    end
-
-    local localId = Players.LocalPlayer.UserId
-
-    for rank, entry in ipairs(board) do
-        if rank > 6 then break end
-        local isMe = entry.userId == localId
-
-        local row = Instance.new("Frame")
-        row.Size = UDim2.new(1, 0, 0, 42)
-        row.LayoutOrder = rank
-        row.BackgroundColor3 = isMe and Color3.fromRGB(45, 25, 90) or Color3.fromRGB(18, 18, 32)
-        row.BackgroundTransparency = isMe and 0.3 or 0.6
-        row.BorderSizePixel = 0
-        row.Parent = leaderboardList
-        corner(row, 5)
-
-        makeLabel(row, {
-            Size = UDim2.new(0, 26, 1, 0), Position = UDim2.new(0, 4, 0, 0),
-            BackgroundTransparency = 1,
-            Text = rank == 1 and "👑" or tostring(rank),
-            TextColor3 = rank == 1 and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(160,160,160),
-            Font = Enum.Font.GothamBold, TextScaled = true,
-        })
-        makeLabel(row, {
-            Size = UDim2.new(0.5, -30, 0.55, 0), Position = UDim2.new(0, 30, 0, 2),
-            BackgroundTransparency = 1, Text = entry.name,
-            TextColor3 = Color3.fromRGB(220, 220, 255),
-            Font = Enum.Font.Gotham, TextScaled = true,
-            TextXAlignment = Enum.TextXAlignment.Left,
-        })
-        makeLabel(row, {
-            Size = UDim2.new(0.48, 0, 0.55, 0), Position = UDim2.new(0.52, 0, 0, 2),
-            BackgroundTransparency = 1,
-            Text = fmt(entry.totalEarned) .. " 💰",
-            TextColor3 = Color3.fromRGB(255, 220, 50),
-            Font = Enum.Font.GothamBold, TextScaled = true,
-            TextXAlignment = Enum.TextXAlignment.Right,
-        })
-        makeLabel(row, {
-            Size = UDim2.new(1, -34, 0.42, 0), Position = UDim2.new(0, 30, 0.55, 0),
-            BackgroundTransparency = 1,
-            Text = "Lv." .. entry.coreLevel .. "  +" .. fmt(entry.incomeRate) .. "/s",
-            TextColor3 = Color3.fromRGB(130, 130, 180),
-            Font = Enum.Font.Gotham, TextScaled = true,
-            TextXAlignment = Enum.TextXAlignment.Left,
-        })
-    end
 end
 
 function HUD.UpdatePotions(activePotions)

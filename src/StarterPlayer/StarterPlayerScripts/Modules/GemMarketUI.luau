@@ -209,8 +209,9 @@ function GemMarketUI.Init(playerGui, initData, RF)
 
     local panel = Instance.new("Frame")
     panel.Name = "ExchangePanel"
-    panel.Size = UDim2.new(0, 440, 0, 560)
-    panel.Position = UDim2.new(0, 8, 0, 110)
+    panel.Size = UDim2.new(0, 520, 0, 640)
+    panel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    panel.AnchorPoint = Vector2.new(0.5, 0.5)
     panel.BackgroundColor3 = Color3.fromRGB(8, 8, 20)
     panel.BackgroundTransparency = 0.06
     panel.BorderSizePixel = 0
@@ -230,6 +231,14 @@ function GemMarketUI.Init(playerGui, initData, RF)
         TextXAlignment = Enum.TextXAlignment.Center,
         Size = UDim2.new(1, 0, 1, 0),
     })
+
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 34, 0, 34); closeBtn.Position = UDim2.new(1, -38, 0, 4)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 40); closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "✕"; closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true; closeBtn.Parent = header
+    corner(closeBtn, 6)
+    closeBtn.MouseButton1Click:Connect(function() exchangeOpen = false; panel.Visible = false end)
 
     lbl(panel, {
         Text = "Sell gems for credits — prices fall as you sell, recover over time.",

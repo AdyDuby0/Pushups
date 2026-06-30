@@ -452,11 +452,12 @@ function CraftingUI.Init(playerGui, initData, RF)
     toggleBtn.Parent = gui
     corner(toggleBtn, 6)
 
-    -- Panel
+    -- Panel (centered on screen)
     local panel = Instance.new("Frame")
     panel.Name = "CraftingPanel"
-    panel.Size = UDim2.new(0, 480, 0, 580)
-    panel.Position = UDim2.new(0, 8, 0, 110)
+    panel.Size = UDim2.new(0, 540, 0, 640)
+    panel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    panel.AnchorPoint = Vector2.new(0.5, 0.5)
     panel.BackgroundColor3 = Color3.fromRGB(8, 8, 22)
     panel.BackgroundTransparency = 0.08
     panel.BorderSizePixel = 0
@@ -480,6 +481,14 @@ function CraftingUI.Init(playerGui, initData, RF)
     titleLbl.Font = Enum.Font.GothamBold
     titleLbl.TextScaled = true
     titleLbl.Parent = header
+
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 34, 0, 34); closeBtn.Position = UDim2.new(1, -38, 0, 4)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 40); closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "✕"; closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true; closeBtn.Parent = header
+    corner(closeBtn, 6)
+    closeBtn.MouseButton1Click:Connect(function() craftOpen = false; panel.Visible = false end)
 
     -- Tabs
     local tabBar = Instance.new("Frame")

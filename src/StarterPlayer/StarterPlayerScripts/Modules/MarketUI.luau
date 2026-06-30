@@ -186,11 +186,12 @@ function MarketUI.Init(playerGui, initData, RF)
     toggleBtn.Parent          = gui
     corner(toggleBtn, 6)
 
-    -- Panel
+    -- Panel (centered on screen)
     local panel = Instance.new("Frame")
     panel.Name            = "MarketPanel"
-    panel.Size            = UDim2.new(0, 420, 0, 560)
-    panel.Position        = UDim2.new(0, 8, 0, 110)
+    panel.Size            = UDim2.new(0, 520, 0, 640)
+    panel.Position        = UDim2.new(0.5, 0, 0.5, 0)
+    panel.AnchorPoint     = Vector2.new(0.5, 0.5)
     panel.BackgroundColor3 = Color3.fromRGB(8, 8, 22)
     panel.BackgroundTransparency = 0.08
     panel.BorderSizePixel = 0
@@ -214,6 +215,14 @@ function MarketUI.Init(playerGui, initData, RF)
     title.Font                 = Enum.Font.GothamBold
     title.TextScaled           = true
     title.Parent               = header
+
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 34, 0, 34); closeBtn.Position = UDim2.new(1, -38, 0, 4)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 40); closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "✕"; closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true; closeBtn.Parent = header
+    corner(closeBtn, 6)
+    closeBtn.MouseButton1Click:Connect(function() marketOpen = false; panel.Visible = false end)
 
     -- Sell panel
     local sellPanel = Instance.new("Frame")

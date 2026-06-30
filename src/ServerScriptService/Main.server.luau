@@ -143,11 +143,19 @@ end
 RFn.StartDrill.OnServerInvoke = function(p)
     local gemType = DrillManager.CurrentGem(p)
     if not gemType then return false, "Drill not set" end
-    return GemManager.StartMining(p, gemType)
+    local ok, mineTime = GemManager.StartMining(p, gemType)
+    if ok then
+        local _, idx = PlotManager.GetPlot(p)
+        if idx then WorldBuilder.SetDrillSpinning(idx, true) end
+    end
+    return ok, mineTime
 end
 
 RFn.StopDrill.OnServerInvoke = function(p)
-    GemManager.StopMining(p); return true
+    GemManager.StopMining(p)
+    local _, idx = PlotManager.GetPlot(p)
+    if idx then WorldBuilder.SetDrillSpinning(idx, false) end
+    return true
 end
 
 RFn.SetDrillGem.OnServerInvoke = function(p, gemType)
@@ -293,8 +301,30 @@ end
 
 -- ── Player lifecycle ──────────────────────────────────────────────────────────
 
+-- Classic Roblox leaderboard (top-right player list) via leaderstats
+local function fmtCredits(n)
+    n = math.floor(n)
+    if n >= 1e15 then return string.format("%.1fQ", n/1e15)
+    elseif n >= 1e12 then return string.format("%.1fT", n/1e12)
+    elseif n >= 1e9  then return string.format("%.1fB", n/1e9)
+    elseif n >= 1e6  then return string.format("%.1fM", n/1e6)
+    elseif n >= 1e3  then return string.format("%.1fK", n/1e3)
+    else return tostring(n) end
+end
+
+local function ensureLeaderstats(player)
+    local ls = player:FindFirstChild("leaderstats")
+    if not ls then
+        ls = Instance.new("Folder"); ls.Name = "leaderstats"; ls.Parent = player
+        local lvl = Instance.new("IntValue"); lvl.Name = "Core Lv"; lvl.Value = 1; lvl.Parent = ls
+        local cr  = Instance.new("StringValue"); cr.Name = "Credits"; cr.Value = "0"; cr.Parent = ls
+    end
+    return ls
+end
+
 Players.PlayerAdded:Connect(function(player)
     DataManager.Load(player)
+    ensureLeaderstats(player)
     player.CharacterAdded:Connect(function()
         task.wait(1)
         local plot, idx = PlotManager.Assign(player)
@@ -303,7 +333,7 @@ Players.PlayerAdded:Connect(function(player)
             WorldBuilder.SetPlotOwner(idx, player.DisplayName)
         end
         local msg = plot
-            and "Assigned to Plot " .. idx .. ". Head to a gem node and click to extract."
+            and "Assigned to Plot " .. idx .. ". Hold E on your ⛏ Drill to start mining."
             or  "All plots taken. Wait for a player to leave."
         R.Notification:FireClient(player, msg)
     end)
@@ -313,7 +343,10 @@ Players.PlayerRemoving:Connect(function(player)
     GemManager.StopExtraction(player)
     PowerCoreModel.Despawn(player)
     local _, idx = PlotManager.GetPlot(player)
-    if idx then WorldBuilder.SetPlotOwner(idx, nil) end
+    if idx then
+        WorldBuilder.SetPlotOwner(idx, nil)
+        WorldBuilder.SetDrillSpinning(idx, false)
+    end
     PlotManager.Release(player)
     DataManager.Unload(player)
 end)
@@ -327,25 +360,19 @@ end)
 PowerCoreManager.StartIncomeLoop()
 GemMarketManager.StartLoop()
 
+-- Keep the classic leaderstats up to date
 task.spawn(function()
     while true do
         task.wait(GameConfig.LEADERBOARD_RATE)
-        local board = {}
         for _, player in ipairs(Players:GetPlayers()) do
             local data = DataManager.Get(player)
-            if data then
-                table.insert(board, {
-                    name        = player.Name,
-                    userId      = player.UserId,
-                    totalEarned = data.totalEarned,
-                    coreLevel   = data.coreLevel,
-                    incomeRate  = PowerCoreManager.GetIncomeRate(player),
-                })
+            local ls   = player:FindFirstChild("leaderstats")
+            if data and ls then
+                local lvl = ls:FindFirstChild("Core Lv")
+                local cr  = ls:FindFirstChild("Credits")
+                if lvl then lvl.Value = data.coreLevel end
+                if cr  then cr.Value  = fmtCredits(data.credits) end
             end
-        end
-        table.sort(board, function(a, b) return a.totalEarned > b.totalEarned end)
-        for _, player in ipairs(Players:GetPlayers()) do
-            R.UpdateLeaderboard:FireClient(player, board)
         end
     end
 end)

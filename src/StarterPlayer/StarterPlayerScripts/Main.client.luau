@@ -104,10 +104,6 @@ R.UpdateMarket.OnClientEvent:Connect(function(newListings)
     MarketUI.UpdateListings(newListings)
 end)
 
-R.UpdateLeaderboard.OnClientEvent:Connect(function(board)
-    HUD.UpdateLeaderboard(board)
-end)
-
 local firstMine = true
 -- GemExtracted fires once per completed drill round: (gemType, heldCount, nextMineTime)
 R.GemExtracted.OnClientEvent:Connect(function(gemType, heldCount, nextMineTime)

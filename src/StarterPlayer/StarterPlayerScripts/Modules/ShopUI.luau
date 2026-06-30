@@ -115,11 +115,12 @@ function ShopUI.Init(playerGui, initData, RF)
     toggleBtn.Parent = gui
     corner(toggleBtn, 6)
 
-    -- Panel
+    -- Panel (centered on screen)
     local panel = Instance.new("Frame")
     panel.Name = "ShopPanel"
-    panel.Size = UDim2.new(0, 480, 0, 580)
-    panel.Position = UDim2.new(0, 8, 0, 110)
+    panel.Size = UDim2.new(0, 540, 0, 640)
+    panel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    panel.AnchorPoint = Vector2.new(0.5, 0.5)
     panel.BackgroundColor3 = Color3.fromRGB(8, 6, 20)
     panel.BackgroundTransparency = 0.06
     panel.BorderSizePixel = 0
@@ -135,13 +136,21 @@ function ShopUI.Init(playerGui, initData, RF)
     headerBar.Parent = panel
     corner(headerBar, 10)
 
-    lbl(headerBar, "🛒  SHOP", UDim2.new(0.6, 0, 1, 0), UDim2.new(0, 0, 0, 0),
-        Color3.fromRGB(200, 130, 255), Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+    lbl(headerBar, "🛒  SHOP", UDim2.new(0.5, 0, 1, 0), UDim2.new(0, 8, 0, 0),
+        Color3.fromRGB(200, 130, 255), Enum.Font.GothamBold, Enum.TextXAlignment.Left)
 
     -- 💎 balance in header
     gemCurrLabel = lbl(headerBar, "💎 " .. fmt(gemCurr),
-        UDim2.new(0.38, -8, 1, 0), UDim2.new(0.62, 4, 0, 0),
+        UDim2.new(0.4, -52, 1, 0), UDim2.new(0.6, 4, 0, 0),
         Color3.fromRGB(160, 100, 255), Enum.Font.GothamBold, Enum.TextXAlignment.Right)
+
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 34, 0, 34); closeBtn.Position = UDim2.new(1, -38, 0, 4)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 40); closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "✕"; closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true; closeBtn.Parent = headerBar
+    corner(closeBtn, 6)
+    closeBtn.MouseButton1Click:Connect(function() shopOpen = false; panel.Visible = false end)
 
     -- Scroll area
     local scroll = Instance.new("ScrollingFrame")

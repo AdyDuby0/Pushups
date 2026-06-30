@@ -224,8 +224,9 @@ function DrillUI.Init(playerGui, initData, RF)
 
     local panel = Instance.new("Frame")
     panel.Name = "DrillPanel"
-    panel.Size = UDim2.new(0, 400, 0, 580)
-    panel.Position = UDim2.new(0, 8, 0, 110)
+    panel.Size = UDim2.new(0, 500, 0, 640)
+    panel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    panel.AnchorPoint = Vector2.new(0.5, 0.5)
     panel.BackgroundColor3 = Color3.fromRGB(8, 8, 20)
     panel.BackgroundTransparency = 0.06
     panel.BorderSizePixel = 0
@@ -241,6 +242,14 @@ function DrillUI.Init(playerGui, initData, RF)
         Text = "⛏  DRILL", Font = Enum.Font.GothamBold, TextColor3 = Color3.fromRGB(255, 200, 120),
         TextXAlignment = Enum.TextXAlignment.Center, Size = UDim2.new(1, 0, 1, 0),
     })
+
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 34, 0, 34); closeBtn.Position = UDim2.new(1, -38, 0, 4)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 40); closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "✕"; closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextScaled = true; closeBtn.Parent = header
+    corner(closeBtn, 6)
+    closeBtn.MouseButton1Click:Connect(function() drillOpen = false; panel.Visible = false end)
 
     statusLbl = lbl(panel, {
         Text = "", TextXAlignment = Enum.TextXAlignment.Center, TextColor3 = Color3.fromRGB(255, 225, 160),

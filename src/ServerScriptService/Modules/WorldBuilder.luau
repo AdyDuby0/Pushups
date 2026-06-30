@@ -12,9 +12,13 @@
 --   • a plot sign
 -- Lighting keeps the dark floor mist but uses ShadowMap so it doesn't flicker.
 
-local Lighting = game:GetService("Lighting")
+local Lighting   = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
 
 local WorldBuilder = {}
+
+local drillBits = {}   -- plotIndex -> { part, rest = CFrame }
+local drillSpin = {}   -- plotIndex -> bool (spin while the owner is mining)
 
 -- ── Layout constants ────────────────────────────────────────────────────────
 local GROUND_Y     = 0
@@ -192,9 +196,11 @@ local function buildDrill(plot, plotCF)
         Name = "DrillTop", Size = Vector3.new(5, 0.8, 1.4),
         Color = Color3.fromRGB(70, 70, 88), Material = Enum.Material.Metal, CanCollide = false,
     })
-    place(plot, plotCF, CFrame.new(lx, 4.2, lz) * CFrame.Angles(0, 0, math.rad(90)), {
-        Name = "DrillBit", Shape = Enum.PartType.Cylinder, Size = Vector3.new(5.5, 1.3, 1.3),
-        Color = Color3.fromRGB(120, 120, 140), Material = Enum.Material.Metal, CanCollide = false,
+    -- flat auger blade (a plain cylinder spinning on its own axis would look
+    -- static, so the bit is a blade that visibly sweeps as it spins about Y)
+    local bit = place(plot, plotCF, CFrame.new(lx, 4.2, lz), {
+        Name = "DrillBit", Size = Vector3.new(2.2, 5.5, 0.4),
+        Color = Color3.fromRGB(150, 150, 168), Material = Enum.Material.Metal, CanCollide = false,
     })
     place(plot, plotCF, CFrame.new(lx, 3.2, lz), {
         Name = "DrillGlow", Shape = Enum.PartType.Ball, Size = Vector3.new(1.6, 1.6, 1.6),
@@ -202,6 +208,7 @@ local function buildDrill(plot, plotCF)
     })
 
     labelBillboard(housing, 6, "⛏ DRILL", "hold [E]", ORANGE)
+    return bit
 end
 
 -- ── Crafting machine (front-left corner) ─────────────────────────────────────
@@ -407,9 +414,12 @@ function WorldBuilder.Build()
         buildFence(plot, cf)
         local spawn = buildSpawn(plot, cf)
         buildCorePlatform(plot, cf)
-        buildDrill(plot, cf)
+        local bit = buildDrill(plot, cf)
         buildCraftingStation(plot, cf)
         signLabels[i] = buildSign(plot, cf, i)
+
+        drillBits[i] = { part = bit, rest = bit.CFrame }
+        drillSpin[i] = false
 
         plot.PrimaryPart = spawn
     end
@@ -425,5 +435,21 @@ function WorldBuilder.SetPlotOwner(index, name)
         lbl.Text = name and ("⚡ " .. name .. "'s Plot") or ("⚡ PLOT " .. index)
     end
 end
+
+-- Spin the plot's drill bit while its owner is mining
+function WorldBuilder.SetDrillSpinning(index, on)
+    if drillSpin[index] ~= nil then drillSpin[index] = on and true or false end
+end
+
+-- Drives the drill-bit spin every frame for plots flagged as mining
+RunService.Heartbeat:Connect(function()
+    local a = os.clock() * 9   -- spin speed
+    for idx, on in pairs(drillSpin) do
+        local d = drillBits[idx]
+        if on and d and d.part and d.part.Parent then
+            d.part.CFrame = d.rest * CFrame.Angles(0, a, 0)
+        end
+    end
+end)
 
 return WorldBuilder
