@@ -21,6 +21,9 @@ local DEFAULT_DATA = {
     redeemedCodes   = {},
     -- Claimed goals: { goalId = true }
     claimedGoals    = {},
+    -- Prestige / rebirth: permanent points + the totalEarned baseline at last rebirth
+    prestige        = 0,
+    prestigeBaseline = 0,
     -- Gear: one piece per category, nil means nothing equipped
     gear = {
         conductor   = nil,   -- { tier = N } or nil

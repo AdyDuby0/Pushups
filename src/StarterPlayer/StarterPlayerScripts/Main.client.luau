@@ -17,6 +17,7 @@ local R = {
     UpdatePotions     = RemotesFolder:WaitForChild("UpdatePotions"),
     UpdateGemMarket   = RemotesFolder:WaitForChild("UpdateGemMarket"),
     Teleport          = RemotesFolder:WaitForChild("Teleport"),
+    Resync            = RemotesFolder:WaitForChild("Resync"),
 }
 
 local RF = {
@@ -38,6 +39,8 @@ local RF = {
     RedeemCode        = RemotesFolder:WaitForChild("RedeemCode"),
     GetGoals          = RemotesFolder:WaitForChild("GetGoals"),
     ClaimGoal         = RemotesFolder:WaitForChild("ClaimGoal"),
+    GetRebirthInfo    = RemotesFolder:WaitForChild("GetRebirthInfo"),
+    Rebirth           = RemotesFolder:WaitForChild("Rebirth"),
     BuyCoreUpgrade  = RemotesFolder:WaitForChild("BuyCoreUpgrade"),
     CraftGear       = RemotesFolder:WaitForChild("CraftGear"),
     EquipGear       = RemotesFolder:WaitForChild("EquipGear"),
@@ -60,6 +63,7 @@ local DrillUI          = require(Modules:WaitForChild("DrillUI"))
 local AdminUI          = require(Modules:WaitForChild("AdminUI"))
 local CodesUI          = require(Modules:WaitForChild("CodesUI"))
 local QuestsUI         = require(Modules:WaitForChild("QuestsUI"))
+local RebirthUI        = require(Modules:WaitForChild("RebirthUI"))
 local TutorialManager  = require(Modules:WaitForChild("TutorialManager"))
 
 if not player.Character then player.CharacterAdded:Wait() end
@@ -83,6 +87,7 @@ GemMarketUI.Init(playerGui, initData, RF)
 DrillUI.Init(playerGui, initData, RF)
 CodesUI.Init(playerGui, initData, RF)
 QuestsUI.Init(playerGui, initData, RF)
+RebirthUI.Init(playerGui, initData, RF)
 if initData.isAdmin then
     AdminUI.Init(playerGui, initData, RF)
 end
@@ -112,6 +117,16 @@ end)
 
 R.UpdateGemMarket.OnClientEvent:Connect(function(snap)
     GemMarketUI.UpdatePrices(snap)
+end)
+
+R.Resync.OnClientEvent:Connect(function(d)
+    PlotUI.Resync(d)
+    if d.gems then
+        MarketUI.UpdateGems(d.gems)
+        CraftingUI.UpdateGems(d.gems)
+        GemMarketUI.UpdateGems(d.gems)
+        DrillUI.UpdateGems(d.gems)
+    end
 end)
 
 R.UpdateMarket.OnClientEvent:Connect(function(newListings)

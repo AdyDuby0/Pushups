@@ -90,6 +90,9 @@ function PowerCoreManager.GetIncomeRate(player)
     end
     base = base * (1 + upgradeBonus)
 
+    -- Prestige multiplier (permanent, from rebirths)
+    base = base * (1 + (data.prestige or 0) * GameConfig.PRESTIGE_BONUS)
+
     -- Gamepasses
     if MonetizationManager then
         if MonetizationManager.HasDoubleIncome(player) then base *= 2 end

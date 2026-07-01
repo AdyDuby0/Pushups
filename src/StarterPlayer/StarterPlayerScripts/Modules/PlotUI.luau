@@ -579,6 +579,16 @@ function PlotUI.IsOpen()
     return isOpen
 end
 
+-- Full resync after a rebirth (core level/slots/upgrades all reset server-side)
+function PlotUI.Resync(d)
+    if d.coreLevel    then data.coreLevel = d.coreLevel end
+    if d.coreSlots    then data.coreSlots = d.coreSlots end
+    if d.gems         then data.gems = d.gems end
+    if d.credits      then data.credits = d.credits end
+    if d.coreUpgrades then upgradeInfo = d.coreUpgrades end
+    refreshSlots(); refreshGems(); refreshUpgrades()
+end
+
 function PlotUI.UpdateGems(gems)
     data.gems = gems
     refreshGems()

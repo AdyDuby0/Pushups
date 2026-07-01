@@ -12,6 +12,11 @@ return {
         [1318952312] = true,
     },
 
+    -- Rebirth / prestige. Points gained = floor(sqrt(runEarned / DIVISOR)); each
+    -- point permanently multiplies income by (1 + BONUS).
+    PRESTIGE_DIVISOR = 10000,
+    PRESTIGE_BONUS   = 0.10,
+
     -- Goals / quests. metric is a stat name; reward = { credits, gemCurrency, gems }.
     GOALS = {
         { id = "mine50",   name = "Mine 50 gems",        metric = "gemsCollected",   target = 50,       reward = { credits = 2000 } },

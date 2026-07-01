@@ -16,6 +16,7 @@ local PowerCoreModel      = require(Mods:WaitForChild("PowerCoreModel"))
 local GemMarketManager    = require(Mods:WaitForChild("GemMarketManager"))
 local DrillManager        = require(Mods:WaitForChild("DrillManager"))
 local QuestManager        = require(Mods:WaitForChild("QuestManager"))
+local RebirthManager      = require(Mods:WaitForChild("RebirthManager"))
 local WorldBuilder        = require(Mods:WaitForChild("WorldBuilder"))
 local GameConfig          = require(ReplicatedStorage.Config.GameConfig)
 local GemTypes            = require(ReplicatedStorage.Config.GemTypes)
@@ -51,6 +52,7 @@ local R = {
     UpdatePotions     = ev("UpdatePotions"),
     UpdateGemMarket   = ev("UpdateGemMarket"),
     Teleport          = ev("Teleport"),
+    Resync            = ev("Resync"),
 }
 
 local RFn = {
@@ -72,6 +74,8 @@ local RFn = {
     RedeemCode      = fn("RedeemCode"),
     GetGoals        = fn("GetGoals"),
     ClaimGoal       = fn("ClaimGoal"),
+    GetRebirthInfo  = fn("GetRebirthInfo"),
+    Rebirth         = fn("Rebirth"),
     BuyCoreUpgrade  = fn("BuyCoreUpgrade"),
     CraftGear       = fn("CraftGear"),
     EquipGear       = fn("EquipGear"),
@@ -96,6 +100,7 @@ MonetizationManager.Init(DataManager, R)
 GemMarketManager.Init(DataManager, R)
 DrillManager.Init(DataManager)
 QuestManager.Init(DataManager)
+RebirthManager.Init(DataManager)
 PowerCoreModel.StartAnimation()
 
 -- ── Remote handlers ───────────────────────────────────────────────────────────
@@ -121,6 +126,7 @@ RFn.GetInitialData.OnServerInvoke = function(player)
         listings        = MarketManager.GetAll(),
         gemMarket       = GemMarketManager.GetPrices(),
         drill           = DrillManager.GetInfo(player),
+        rebirth         = RebirthManager.GetInfo(player),
         isAdmin         = isAdmin(player),
     }
 end
@@ -216,6 +222,31 @@ end
 
 RFn.GetGoals.OnServerInvoke = function(p)
     return QuestManager.GetGoals(p)
+end
+
+RFn.GetRebirthInfo.OnServerInvoke = function(p)
+    return RebirthManager.GetInfo(p)
+end
+
+RFn.Rebirth.OnServerInvoke = function(p)
+    local ok, result = RebirthManager.Rebirth(p)
+    if ok then
+        local data = DataManager.Get(p)
+        R.UpdateHUD:FireClient(p, {
+            credits    = data.credits,
+            incomeRate = PowerCoreManager.GetIncomeRate(p),
+            coreLevel  = data.coreLevel,
+        })
+        R.UpdateInventory:FireClient(p, data.gems)
+        R.Resync:FireClient(p, {
+            credits      = data.credits,
+            coreLevel    = data.coreLevel,
+            coreSlots    = data.coreSlots,
+            gems         = data.gems,
+            coreUpgrades = PowerCoreManager.GetCoreUpgradeInfo(p),
+        })
+    end
+    return ok, result
 end
 
 RFn.ClaimGoal.OnServerInvoke = function(p, goalId)
