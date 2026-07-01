@@ -94,6 +94,12 @@ function PowerCoreManager.GetIncomeRate(player)
         local level = (data.coreUpgrades and data.coreUpgrades[cfg.key]) or 0
         upgradeBonus += level * cfg.bonusPerLevel
     end
+    for _, cfg in ipairs(GameConfig.WORKSHOP_UPGRADES) do
+        if cfg.kind == "income" then
+            local level = (data.coreUpgrades and data.coreUpgrades[cfg.key]) or 0
+            upgradeBonus += level * cfg.perLevel
+        end
+    end
     base = base * (1 + upgradeBonus)
 
     -- Prestige multiplier (permanent, from rebirths)
@@ -207,7 +213,7 @@ function PowerCoreManager.UpgradeCore(player)
     return true
 end
 
--- Find an upgrade config by key in either the income or mining lists.
+-- Find an upgrade config by key across the income, mining and workshop lists.
 local function findUpgradeCfg(key)
     for _, c in ipairs(GameConfig.CORE_UPGRADES) do
         if c.key == key then return c, "income" end
@@ -215,7 +221,43 @@ local function findUpgradeCfg(key)
     for _, c in ipairs(GameConfig.MINING_UPGRADES) do
         if c.key == key then return c, "mining" end
     end
+    for _, c in ipairs(GameConfig.WORKSHOP_UPGRADES) do
+        if c.key == key then return c, c.kind end
+    end
     return nil
+end
+
+-- Player's gem sell-value multiplier (from Workshop "Market Value")
+function PowerCoreManager.GetSellMultiplier(player)
+    local data = DataManager.Get(player)
+    if not data then return 1 end
+    local mult = 1
+    for _, cfg in ipairs(GameConfig.WORKSHOP_UPGRADES) do
+        if cfg.kind == "market" then
+            mult += ((data.coreUpgrades and data.coreUpgrades[cfg.key]) or 0) * cfg.perLevel
+        end
+    end
+    return mult
+end
+
+-- Workshop upgrade list for the UI
+function PowerCoreManager.GetWorkshopInfo(player)
+    local data = DataManager.Get(player)
+    local info = {}
+    if not data then return info end
+    for _, cfg in ipairs(GameConfig.WORKSHOP_UPGRADES) do
+        local level = (data.coreUpgrades and data.coreUpgrades[cfg.key]) or 0
+        table.insert(info, {
+            key      = cfg.key,
+            name     = cfg.name,
+            icon     = cfg.icon,
+            kind     = cfg.kind,
+            level    = level,
+            perLevel = cfg.perLevel,
+            nextCost = math.floor(cfg.baseCost * cfg.growth ^ level),
+        })
+    end
+    return info
 end
 
 -- Returns the client-facing list of repeatable income upgrades (mining-speed

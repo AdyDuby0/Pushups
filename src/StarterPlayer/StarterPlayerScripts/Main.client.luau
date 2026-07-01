@@ -35,6 +35,7 @@ local RF = {
     SetDrillGem       = RemotesFolder:WaitForChild("SetDrillGem"),
     UpgradeDrillDepth = RemotesFolder:WaitForChild("UpgradeDrillDepth"),
     GetDrillInfo      = RemotesFolder:WaitForChild("GetDrillInfo"),
+    GetWorkshopInfo   = RemotesFolder:WaitForChild("GetWorkshopInfo"),
     AdminAction       = RemotesFolder:WaitForChild("AdminAction"),
     RedeemCode        = RemotesFolder:WaitForChild("RedeemCode"),
     GetGoals          = RemotesFolder:WaitForChild("GetGoals"),
@@ -64,6 +65,7 @@ local CraftingUI       = require(Modules:WaitForChild("CraftingUI"))
 local ShopUI           = require(Modules:WaitForChild("ShopUI"))
 local GemMarketUI      = require(Modules:WaitForChild("GemMarketUI"))
 local DrillUI          = require(Modules:WaitForChild("DrillUI"))
+local WorkshopUI       = require(Modules:WaitForChild("WorkshopUI"))
 local AdminUI          = require(Modules:WaitForChild("AdminUI"))
 local CodesUI          = require(Modules:WaitForChild("CodesUI"))
 local QuestsUI         = require(Modules:WaitForChild("QuestsUI"))
@@ -90,6 +92,7 @@ CraftingUI.Init(playerGui, initData, RF)
 ShopUI.Init(playerGui, initData, RF)
 GemMarketUI.Init(playerGui, initData, RF)
 DrillUI.Init(playerGui, initData, RF)
+WorkshopUI.Init(playerGui, initData, RF)
 CodesUI.Init(playerGui, initData, RF)
 QuestsUI.Init(playerGui, initData, RF)
 RebirthUI.Init(playerGui, initData, RF)
@@ -107,6 +110,7 @@ R.UpdateHUD.OnClientEvent:Connect(function(hudData)
         CraftingUI.UpdateCredits(hudData.credits)
         PlotUI.UpdateCredits(hudData.credits)
         DrillUI.UpdateCredits(hudData.credits)
+        WorkshopUI.UpdateCredits(hudData.credits)
     end
     if hudData.gemCurrency then
         ShopUI.UpdateGemCurrency(hudData.gemCurrency)
@@ -175,6 +179,7 @@ local stationOpeners = {
     Shop      = function() ShopUI.Toggle() end,
     GemMarket = function() GemMarketUI.Toggle() end,
     Drill     = function() DrillUI.Toggle() end,
+    Workshop  = function() WorkshopUI.Toggle() end,
 }
 
 local wiredStations = {}

@@ -273,6 +273,31 @@ local function buildCorePlatform(plot, plotCF)
     })
 end
 
+-- ── Workshop station (deep credit-sink upgrades) ────────────────────────────
+local function buildWorkshop(plot, plotCF)
+    local lx, lz = 13, -6
+    local GOLD = Color3.fromRGB(255, 200, 90)
+    local base = place(plot, plotCF, CFrame.new(lx, 2, lz), {
+        Name = "Station_Workshop", Size = Vector3.new(5.5, 4, 4),
+        Color = Color3.fromRGB(32, 30, 26), Material = Enum.Material.DiamondPlate,
+    })
+    base:SetAttribute("StationType", "Workshop")
+    addPrompt(base, "Open", "Workshop")
+    -- angled glowing screen
+    place(plot, plotCF, CFrame.new(lx, 4.7, lz + 0.4) * CFrame.Angles(math.rad(-22), 0, 0), {
+        Name = "WorkshopScreen", Size = Vector3.new(4.4, 2.6, 0.3),
+        Color = GOLD, Material = Enum.Material.Neon, CanCollide = false,
+    })
+    -- gear cogs
+    for _, dx in ipairs({ -1.7, 1.7 }) do
+        place(plot, plotCF, CFrame.new(lx + dx, 4.4, lz - 1.7) * CFrame.Angles(math.rad(90), 0, 0), {
+            Name = "WorkshopGear", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, 1.5, 1.5),
+            Color = Color3.fromRGB(130, 120, 96), Material = Enum.Material.Metal, CanCollide = false,
+        })
+    end
+    labelBillboard(base, 5.2, "⚙️ WORKSHOP", "hold [E]", GOLD)
+end
+
 -- ── Plot sign ───────────────────────────────────────────────────────────────
 local function buildSign(plot, plotCF, index)
     place(plot, plotCF, CFrame.new(0, 3, -(HALF + 1)) * CFrame.Angles(0, 0, math.rad(90)), {
@@ -416,6 +441,7 @@ function WorldBuilder.Build()
         buildCorePlatform(plot, cf)
         local bit = buildDrill(plot, cf)
         buildCraftingStation(plot, cf)
+        buildWorkshop(plot, cf)
         signLabels[i] = buildSign(plot, cf, i)
 
         drillBits[i] = { part = bit, rest = bit.CFrame }

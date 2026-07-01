@@ -35,6 +35,13 @@ local function effectiveMineTime(data, baseTime)
         local level = (data.coreUpgrades and data.coreUpgrades[cfg.key]) or 0
         reduction += level * cfg.reductionPerLevel
     end
+    -- Workshop "Drill Power"
+    for _, cfg in ipairs(GameConfig.WORKSHOP_UPGRADES) do
+        if cfg.kind == "mining" then
+            local level = (data.coreUpgrades and data.coreUpgrades[cfg.key]) or 0
+            reduction += level * cfg.perLevel
+        end
+    end
 
     local now = os.time()
 

@@ -9,7 +9,8 @@
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local GemTypes = require(ReplicatedStorage.Config.GemTypes)
+local GemTypes   = require(ReplicatedStorage.Config.GemTypes)
+local GameConfig = require(ReplicatedStorage.Config.GameConfig)
 
 local GemMarketManager = {}
 local DataManager
@@ -85,6 +86,14 @@ function GemMarketManager.Sell(player, gemType, qty)
     if held < 1 then return false, "You have none to sell" end
     if qty > held then qty = held end
 
+    -- Workshop "Market Value" sell multiplier
+    local sellMult = 1
+    for _, cfg in ipairs(GameConfig.WORKSHOP_UPGRADES) do
+        if cfg.kind == "market" then
+            sellMult += ((data.coreUpgrades and data.coreUpgrades[cfg.key]) or 0) * cfg.perLevel
+        end
+    end
+
     local tradeValue = GemTypes[gemType].tradeValue
     local p = pct[gemType]
     local payout = 0
@@ -92,7 +101,7 @@ function GemMarketManager.Sell(player, gemType, qty)
         payout += tradeValue * p / 100
         p = math.max(LOWER_PCT, p - SELL_IMPACT)   -- selling pushes the price down
     end
-    payout = math.floor(payout)
+    payout = math.floor(payout * sellMult)
     pct[gemType] = p
 
     data.gems[gemType] = held - qty

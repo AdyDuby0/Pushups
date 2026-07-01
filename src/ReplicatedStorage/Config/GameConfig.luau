@@ -77,6 +77,15 @@ return {
         { key = "singularity", name = "Singularity Drive", icon = "🌌", bonusPerLevel = 1.00, baseCost = 75000, growth = 1.30 },
     },
 
+    -- Workshop: deep, uncapped credit sinks. kind drives what each does:
+    --   income → +perLevel income   |   mining → -perLevel mine time
+    --   market → +perLevel gem sell value
+    WORKSHOP_UPGRADES = {
+        { key = "corepower",  name = "Core Power",   icon = "💠", kind = "income", perLevel = 0.15, baseCost = 500,  growth = 1.15 },
+        { key = "drillpower", name = "Drill Power",  icon = "⛏", kind = "mining", perLevel = 0.02, baseCost = 800,  growth = 1.17 },
+        { key = "marketval",  name = "Market Value", icon = "📈", kind = "market", perLevel = 0.05, baseCost = 1200, growth = 1.16 },
+    },
+
     -- Permanent, repeatable drill upgrades that cut mine time (credits-based).
     -- reductionPerLevel stacks additively with drill gear / potions, capped by
     -- MIN_MINE_FRACTION above. Combined max here is -85%, matching the cap.

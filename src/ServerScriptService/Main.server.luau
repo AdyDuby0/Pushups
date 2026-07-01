@@ -71,6 +71,7 @@ local RFn = {
     SetDrillGem     = fn("SetDrillGem"),
     UpgradeDrillDepth = fn("UpgradeDrillDepth"),
     GetDrillInfo    = fn("GetDrillInfo"),
+    GetWorkshopInfo = fn("GetWorkshopInfo"),
     AdminAction     = fn("AdminAction"),
     RedeemCode      = fn("RedeemCode"),
     GetGoals        = fn("GetGoals"),
@@ -226,6 +227,10 @@ end
 
 RFn.GetDrillInfo.OnServerInvoke = function(p)
     return DrillManager.GetInfo(p)
+end
+
+RFn.GetWorkshopInfo.OnServerInvoke = function(p)
+    return PowerCoreManager.GetWorkshopInfo(p)
 end
 
 RFn.GetGoals.OnServerInvoke = function(p)
