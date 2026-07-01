@@ -17,6 +17,7 @@ local GemMarketManager    = require(Mods:WaitForChild("GemMarketManager"))
 local DrillManager        = require(Mods:WaitForChild("DrillManager"))
 local QuestManager        = require(Mods:WaitForChild("QuestManager"))
 local RebirthManager      = require(Mods:WaitForChild("RebirthManager"))
+local RewardsManager      = require(Mods:WaitForChild("RewardsManager"))
 local WorldBuilder        = require(Mods:WaitForChild("WorldBuilder"))
 local GameConfig          = require(ReplicatedStorage.Config.GameConfig)
 local GemTypes            = require(ReplicatedStorage.Config.GemTypes)
@@ -76,6 +77,10 @@ local RFn = {
     ClaimGoal       = fn("ClaimGoal"),
     GetRebirthInfo  = fn("GetRebirthInfo"),
     Rebirth         = fn("Rebirth"),
+    GetDailyInfo    = fn("GetDailyInfo"),
+    ClaimDaily      = fn("ClaimDaily"),
+    GetChargeInfo   = fn("GetChargeInfo"),
+    ClaimCharge     = fn("ClaimCharge"),
     BuyCoreUpgrade  = fn("BuyCoreUpgrade"),
     CraftGear       = fn("CraftGear"),
     EquipGear       = fn("EquipGear"),
@@ -101,6 +106,7 @@ GemMarketManager.Init(DataManager, R)
 DrillManager.Init(DataManager)
 QuestManager.Init(DataManager)
 RebirthManager.Init(DataManager)
+RewardsManager.Init(DataManager)
 PowerCoreModel.StartAnimation()
 
 -- ── Remote handlers ───────────────────────────────────────────────────────────
@@ -127,6 +133,8 @@ RFn.GetInitialData.OnServerInvoke = function(player)
         gemMarket       = GemMarketManager.GetPrices(),
         drill           = DrillManager.GetInfo(player),
         rebirth         = RebirthManager.GetInfo(player),
+        daily           = RewardsManager.GetDailyInfo(player),
+        charge          = RewardsManager.GetChargeInfo(player),
         isAdmin         = isAdmin(player),
     }
 end
@@ -226,6 +234,39 @@ end
 
 RFn.GetRebirthInfo.OnServerInvoke = function(p)
     return RebirthManager.GetInfo(p)
+end
+
+RFn.GetDailyInfo.OnServerInvoke = function(p)
+    return RewardsManager.GetDailyInfo(p)
+end
+
+RFn.ClaimDaily.OnServerInvoke = function(p)
+    local ok, result = RewardsManager.ClaimDaily(p)
+    if ok then
+        R.UpdateHUD:FireClient(p, {
+            credits     = result.credits,
+            gemCurrency = result.gemCurrency,
+            incomeRate  = PowerCoreManager.GetIncomeRate(p),
+        })
+        R.UpdateInventory:FireClient(p, result.gems)
+    end
+    return ok, result
+end
+
+RFn.GetChargeInfo.OnServerInvoke = function(p)
+    return RewardsManager.GetChargeInfo(p)
+end
+
+RFn.ClaimCharge.OnServerInvoke = function(p)
+    local ok, result = RewardsManager.ClaimCharge(p, PowerCoreManager.GetIncomeRate(p))
+    if ok then
+        R.UpdateHUD:FireClient(p, {
+            credits    = result.credits,
+            incomeRate = PowerCoreManager.GetIncomeRate(p),
+        })
+        R.UpdatePotions:FireClient(p, PotionManager.GetActive(p))
+    end
+    return ok, result
 end
 
 RFn.Rebirth.OnServerInvoke = function(p)
@@ -493,6 +534,7 @@ Players.PlayerRemoving:Connect(function(player)
         WorldBuilder.SetPlotOwner(idx, nil)
         WorldBuilder.SetDrillSpinning(idx, false)
     end
+    RewardsManager.Cleanup(player)
     PlotManager.Release(player)
     DataManager.Unload(player)
 end)

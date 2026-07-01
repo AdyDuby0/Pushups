@@ -17,6 +17,28 @@ return {
     PRESTIGE_DIVISOR = 10000,
     PRESTIGE_BONUS   = 0.10,
 
+    -- ⚡ Core Charge (playtime reward): the core charges over CHARGE_INTERVAL
+    -- seconds; claiming pays ~2 min of income (min CHARGE_BASE), grows each claim
+    -- this session, and applies the Core Surge buff.
+    CHARGE_INTERVAL = 300,
+    CHARGE_BASE     = 1000,
+
+    -- Timed income buffs (handled in GetIncomeRate + shown in the potion bar)
+    BUFFS = {
+        CoreSurge = { name = "Core Surge", icon = "⚡", color = Color3.fromRGB(255, 210, 90), incomeBonus = 0.5, duration = 90 },
+    },
+
+    -- 🌌 Cosmic Cache: a 7-day login streak. Streak resets if you miss > 48h.
+    DAILY_REWARDS = {
+        { credits = 1000, gems = { Crystite = 5 } },
+        { gemCurrency = 15 },
+        { gems = { Voidstone = 5 } },
+        { gemCurrency = 30 },
+        { gems = { Neutronium = 3 } },
+        { gemCurrency = 50 },
+        { gemCurrency = 100, gems = { SingularityCore = 1 } },
+    },
+
     -- Goals / quests. metric is a stat name; reward = { credits, gemCurrency, gems }.
     GOALS = {
         { id = "mine50",   name = "Mine 50 gems",        metric = "gemsCollected",   target = 50,       reward = { credits = 2000 } },

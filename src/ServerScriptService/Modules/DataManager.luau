@@ -24,6 +24,9 @@ local DEFAULT_DATA = {
     -- Prestige / rebirth: permanent points + the totalEarned baseline at last rebirth
     prestige        = 0,
     prestigeBaseline = 0,
+    -- 🌌 Cosmic Cache daily streak
+    lastDailyClaim  = 0,
+    dailyStreak     = 0,
     -- Gear: one piece per category, nil means nothing equipped
     gear = {
         conductor   = nil,   -- { tier = N } or nil

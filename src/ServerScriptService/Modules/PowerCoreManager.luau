@@ -80,6 +80,12 @@ function PowerCoreManager.GetIncomeRate(player)
             potionBonus += item.incomeBonus
         end
     end
+    for key, cfg in pairs(GameConfig.BUFFS) do
+        local expiresAt = data.activePotions[key]
+        if expiresAt and expiresAt > now and cfg.incomeBonus then
+            potionBonus += cfg.incomeBonus
+        end
+    end
     base = base * (1 + potionBonus)
 
     -- Repeatable core upgrades (overclock / surge)

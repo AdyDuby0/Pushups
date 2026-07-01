@@ -41,6 +41,10 @@ local RF = {
     ClaimGoal         = RemotesFolder:WaitForChild("ClaimGoal"),
     GetRebirthInfo    = RemotesFolder:WaitForChild("GetRebirthInfo"),
     Rebirth           = RemotesFolder:WaitForChild("Rebirth"),
+    GetDailyInfo      = RemotesFolder:WaitForChild("GetDailyInfo"),
+    ClaimDaily        = RemotesFolder:WaitForChild("ClaimDaily"),
+    GetChargeInfo     = RemotesFolder:WaitForChild("GetChargeInfo"),
+    ClaimCharge       = RemotesFolder:WaitForChild("ClaimCharge"),
     BuyCoreUpgrade  = RemotesFolder:WaitForChild("BuyCoreUpgrade"),
     CraftGear       = RemotesFolder:WaitForChild("CraftGear"),
     EquipGear       = RemotesFolder:WaitForChild("EquipGear"),
@@ -64,6 +68,7 @@ local AdminUI          = require(Modules:WaitForChild("AdminUI"))
 local CodesUI          = require(Modules:WaitForChild("CodesUI"))
 local QuestsUI         = require(Modules:WaitForChild("QuestsUI"))
 local RebirthUI        = require(Modules:WaitForChild("RebirthUI"))
+local RewardsUI        = require(Modules:WaitForChild("RewardsUI"))
 local TutorialManager  = require(Modules:WaitForChild("TutorialManager"))
 
 if not player.Character then player.CharacterAdded:Wait() end
@@ -88,6 +93,7 @@ DrillUI.Init(playerGui, initData, RF)
 CodesUI.Init(playerGui, initData, RF)
 QuestsUI.Init(playerGui, initData, RF)
 RebirthUI.Init(playerGui, initData, RF)
+RewardsUI.Init(playerGui, initData, RF)
 if initData.isAdmin then
     AdminUI.Init(playerGui, initData, RF)
 end

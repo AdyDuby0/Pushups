@@ -13,6 +13,9 @@ for _, item in ipairs(GameConfig.PREMIUM_ITEMS) do
         color       = Color3.fromRGB(150, 90, 230),
     }
 end
+for key, cfg in pairs(GameConfig.BUFFS) do
+    PREMIUM_BY_KEY[key] = { icon = cfg.icon, displayName = cfg.name, color = cfg.color }
+end
 
 local HUD = {}
 local creditsLabel, incomeLabel, gemCurrLabel, notifLabel, potionBar
