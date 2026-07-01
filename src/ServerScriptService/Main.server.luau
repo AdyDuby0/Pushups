@@ -68,6 +68,7 @@ local RFn = {
     UpgradeDrillDepth = fn("UpgradeDrillDepth"),
     GetDrillInfo    = fn("GetDrillInfo"),
     AdminAction     = fn("AdminAction"),
+    RedeemCode      = fn("RedeemCode"),
     BuyCoreUpgrade  = fn("BuyCoreUpgrade"),
     CraftGear       = fn("CraftGear"),
     EquipGear       = fn("EquipGear"),
@@ -207,6 +208,33 @@ end
 
 RFn.GetDrillInfo.OnServerInvoke = function(p)
     return DrillManager.GetInfo(p)
+end
+
+RFn.RedeemCode.OnServerInvoke = function(p, code)
+    code = string.upper(string.gsub(tostring(code or ""), "%s", ""))
+    local reward = GameConfig.CODES[code]
+    if not reward then return false, "Invalid code" end
+
+    local data = DataManager.Get(p)
+    if not data then return false, "No data" end
+    data.redeemedCodes = data.redeemedCodes or {}
+    if data.redeemedCodes[code] then return false, "Code already redeemed" end
+    data.redeemedCodes[code] = true
+
+    if reward.credits then data.credits += reward.credits end
+    if reward.gemCurrency then data.gemCurrency = (data.gemCurrency or 0) + reward.gemCurrency end
+    if reward.gems then
+        for gt, n in pairs(reward.gems) do data.gems[gt] = (data.gems[gt] or 0) + n end
+    end
+
+    DataManager.Save(p)
+    R.UpdateHUD:FireClient(p, {
+        credits     = data.credits,
+        gemCurrency = data.gemCurrency,
+        incomeRate  = PowerCoreManager.GetIncomeRate(p),
+    })
+    R.UpdateInventory:FireClient(p, data.gems)
+    return true, { msg = reward.msg or "Reward granted!" }
 end
 
 RFn.AdminAction.OnServerInvoke = function(p, action, a, b)

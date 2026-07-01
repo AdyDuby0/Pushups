@@ -4,6 +4,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GemTypes = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GemTypes"))
 local Panels   = require(script.Parent:WaitForChild("Panels"))
+local Responsive = require(script.Parent:WaitForChild("Responsive"))
 
 local AdminUI = {}
 local RF_ref
@@ -69,7 +70,7 @@ function AdminUI.Init(playerGui, initData, RF)
     -- toggle button (top-left)
     local toggleBtn = Instance.new("TextButton")
     toggleBtn.Size = UDim2.new(0, 120, 0, 34)
-    toggleBtn.Position = UDim2.new(0, 8, 0, 8)
+    toggleBtn.Position = UDim2.new(0, 8, 0, 104)
     toggleBtn.BackgroundColor3 = Color3.fromRGB(110, 30, 30)
     toggleBtn.BorderSizePixel = 0
     toggleBtn.Text = "🛠 Admin"
@@ -91,6 +92,7 @@ function AdminUI.Init(playerGui, initData, RF)
     panel.Visible = false
     panel.Parent = gui
     corner(panel, 10)
+    Responsive.Fit(panel, 440, 440)
 
     local header = Instance.new("Frame")
     header.Size = UDim2.new(1, 0, 0, 42); header.BorderSizePixel = 0

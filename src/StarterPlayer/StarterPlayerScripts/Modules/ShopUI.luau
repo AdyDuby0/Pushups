@@ -7,6 +7,7 @@ local ReplicatedStorage  = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GameConfig"))
 local Panels     = require(script.Parent:WaitForChild("Panels"))
+local Responsive = require(script.Parent:WaitForChild("Responsive"))
 
 local ShopUI = {}
 local RF_ref
@@ -127,6 +128,7 @@ function ShopUI.Init(playerGui, initData, RF)
     panel.Visible = false
     panel.Parent = gui
     corner(panel, 10)
+    Responsive.Fit(panel, 540, 640)
 
     -- Header bar
     local headerBar = Instance.new("Frame")

@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GearTypes    = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GearTypes"))
 local PotionTypes  = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("PotionTypes"))
 local Panels       = require(script.Parent:WaitForChild("Panels"))
+local Responsive   = require(script.Parent:WaitForChild("Responsive"))
 
 local CraftingUI = {}
 local RF_ref
@@ -464,6 +465,7 @@ function CraftingUI.Init(playerGui, initData, RF)
     panel.Visible = false
     panel.Parent = gui
     corner(panel, 10)
+    Responsive.Fit(panel, 540, 640)
 
     -- Header
     local header = Instance.new("Frame")

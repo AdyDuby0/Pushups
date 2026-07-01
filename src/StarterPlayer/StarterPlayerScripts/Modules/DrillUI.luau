@@ -6,6 +6,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GemTypes          = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GemTypes"))
 local Panels            = require(script.Parent:WaitForChild("Panels"))
+local Responsive        = require(script.Parent:WaitForChild("Responsive"))
 
 local DrillUI = {}
 local RF_ref
@@ -233,6 +234,7 @@ function DrillUI.Init(playerGui, initData, RF)
     panel.Visible = false
     panel.Parent = gui
     corner(panel, 10)
+    Responsive.Fit(panel, 500, 640)
 
     local header = Instance.new("Frame")
     header.Size = UDim2.new(1, 0, 0, 42); header.BorderSizePixel = 0

@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players           = game:GetService("Players")
 local GemTypes          = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GemTypes"))
 local Panels            = require(script.Parent:WaitForChild("Panels"))
+local Responsive        = require(script.Parent:WaitForChild("Responsive"))
 
 local MarketUI = {}
 local RF_ref
@@ -198,6 +199,7 @@ function MarketUI.Init(playerGui, initData, RF)
     panel.Visible         = false
     panel.Parent          = gui
     corner(panel, 10)
+    Responsive.Fit(panel, 520, 640)
 
     -- Header
     local header = Instance.new("Frame")

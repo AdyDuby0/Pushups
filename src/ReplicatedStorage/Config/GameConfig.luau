@@ -12,6 +12,16 @@ return {
         [1318952312] = true,
     },
 
+    -- Redeemable promo codes. Keys are UPPERCASE, no spaces. Reward fields:
+    -- credits, gemCurrency, gems = { GemType = count }, and a msg shown on redeem.
+    CODES = {
+        RELEASE  = { credits = 50000, gemCurrency = 100, msg = "Launch bonus!" },
+        WELCOME  = { credits = 10000, gemCurrency = 25,  msg = "Welcome, miner!" },
+        GEMCORE  = { credits = 25000, msg = "Free credits!" },
+        DRILL100 = { gemCurrency = 50, msg = "50 gems for you!" },
+        LIKE1000 = { credits = 100000, gemCurrency = 50, msg = "Thanks for the likes!" },
+    },
+
     -- Max shards of any single type a player can hold.
     INVENTORY_MAX = 20,
 

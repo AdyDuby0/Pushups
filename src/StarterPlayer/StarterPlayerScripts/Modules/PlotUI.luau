@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GemTypes   = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GemTypes"))
 local CoreTypes  = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("PowerCoreTypes"))
 local Panels     = require(script.Parent:WaitForChild("Panels"))
+local Responsive = require(script.Parent:WaitForChild("Responsive"))
 
 local PlotUI = {}
 local RF_ref
@@ -325,6 +326,7 @@ function PlotUI.Init(playerGui, initData, RF, callbacks)
     panel.Visible         = false
     panel.Parent          = gui
     corner(panel, 10)
+    Responsive.Fit(panel, 440, 640)
 
     -- Header
     local header = Instance.new("Frame")
