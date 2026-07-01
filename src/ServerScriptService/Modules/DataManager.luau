@@ -19,6 +19,8 @@ local DEFAULT_DATA = {
     drill           = { gemType = "Crystite", depth = 1 },
     -- Redeemed promo codes: { CODE = true }
     redeemedCodes   = {},
+    -- Claimed goals: { goalId = true }
+    claimedGoals    = {},
     -- Gear: one piece per category, nil means nothing equipped
     gear = {
         conductor   = nil,   -- { tier = N } or nil

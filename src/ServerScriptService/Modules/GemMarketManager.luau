@@ -1,10 +1,10 @@
--- NPC Gem Exchange: a sell-only market with dynamic, stock-chart prices.
---   • Each gem type has a live price that starts at its tradeValue (the ceiling).
---   • Selling pushes the price DOWN — each unit sold is worth a bit less than the
---     last (geometric decay), so dumping a big stack has diminishing returns.
---   • A recovery loop eases every price back toward its base over time, so prices
---     rebound during inactivity.
--- Prices are global (shared by all players) and broadcast on every sell and tick.
+-- NPC Gem Exchange with a simple simulated stock market.
+-- Each gem's price is tracked as a PERCENTAGE of its base tradeValue:
+--   • base   = 100%
+--   • floor  = 50%
+--   • ceiling = 150 + tier*50  (Crystite 200%, Voidstone 250% … Cosmic 450%)
+-- The percentage random-walks each tick, gently reverts toward 100%, and drops
+-- when players sell — so it behaves like a fluctuating market chart.
 
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -15,47 +15,52 @@ local GemMarketManager = {}
 local DataManager
 local Remotes
 
-local SELL_DECAY    = 0.97   -- price multiplier per unit sold
-local PRICE_FLOOR   = 0.30   -- price can't fall below this fraction of base
-local RECOVERY_RATE = 0.05   -- each tick, ease this fraction back toward base
-local RECOVERY_TICK = 5      -- seconds between recovery/broadcast ticks
-local HIST_LEN      = 18     -- price points kept for the sparkline
+local LOWER_PCT   = 50
+local BASE_PCT    = 100
+local REVERT_RATE = 0.04    -- pull back toward base each tick
+local VOLATILITY  = 3.5     -- random swing (± pct) each tick
+local SELL_IMPACT = 0.9     -- pct the price drops per unit sold
+local TICK        = 4       -- seconds between market updates
+local HIST_LEN    = 24      -- points kept for the chart
 
-local prices  = {}   -- gemType -> current price (float)
-local history = {}   -- gemType -> array of recent prices (float)
+local pct     = {}   -- gemType -> current percentage
+local history = {}   -- gemType -> array of recent percentages
 
-local function baseOf(gemType)
-    return GemTypes[gemType].tradeValue
+local function upperPct(gemType)
+    local tier = GemTypes[gemType].rarityTier or 1
+    return 150 + tier * 50
 end
 
 function GemMarketManager.Init(dm, remotes)
     DataManager = dm
     Remotes     = remotes
-    for gemType, gd in pairs(GemTypes) do
-        prices[gemType]  = gd.tradeValue
-        history[gemType] = {}
-        for i = 1, HIST_LEN do history[gemType][i] = gd.tradeValue end
+    for gt in pairs(GemTypes) do
+        pct[gt] = BASE_PCT
+        history[gt] = {}
+        for i = 1, HIST_LEN do history[gt][i] = BASE_PCT end
     end
 end
 
-local function pushHistory(gemType)
-    local h = history[gemType]
-    table.insert(h, prices[gemType])
+local function pushHistory(gt)
+    local h = history[gt]
+    table.insert(h, pct[gt])
     while #h > HIST_LEN do table.remove(h, 1) end
 end
 
--- Snapshot of all prices for the client (integers + base/floor + sparkline)
 function GemMarketManager.GetPrices()
     local snap = {}
-    for gemType, price in pairs(prices) do
-        local base = baseOf(gemType)
+    for gt, p in pairs(pct) do
+        local gd = GemTypes[gt]
         local hist = {}
-        for i, v in ipairs(history[gemType]) do hist[i] = math.floor(v) end
-        snap[gemType] = {
-            price   = math.floor(price),
-            base    = base,
-            floor   = math.floor(base * PRICE_FLOOR),
-            history = hist,
+        for i, v in ipairs(history[gt]) do hist[i] = math.floor(v) end
+        snap[gt] = {
+            pct        = math.floor(p),
+            lower      = LOWER_PCT,
+            upper      = upperPct(gt),
+            base       = BASE_PCT,
+            unit       = math.max(1, math.floor(gd.tradeValue * p / 100)),
+            tradeValue = gd.tradeValue,
+            history    = hist,
         }
     end
     return snap
@@ -64,12 +69,11 @@ end
 local function broadcast()
     if not Remotes then return end
     local snap = GemMarketManager.GetPrices()
-    for _, p in ipairs(Players:GetPlayers()) do
-        Remotes.UpdateGemMarket:FireClient(p, snap)
+    for _, pl in ipairs(Players:GetPlayers()) do
+        Remotes.UpdateGemMarket:FireClient(pl, snap)
     end
 end
 
--- Sell up to `qty` of a gem at the current (decaying) price.
 function GemMarketManager.Sell(player, gemType, qty)
     local data = DataManager.Get(player)
     if not data then return false, "No data" end
@@ -77,24 +81,20 @@ function GemMarketManager.Sell(player, gemType, qty)
 
     qty = math.floor(tonumber(qty) or 0)
     if qty < 1 then return false, "Invalid quantity" end
-
     local held = data.gems[gemType] or 0
     if held < 1 then return false, "You have none to sell" end
-    if qty > held then qty = held end   -- "Sell All" convenience
+    if qty > held then qty = held end
 
-    local floorPrice = baseOf(gemType) * PRICE_FLOOR
-    local p = prices[gemType]
-
-    -- Geometric per-unit payout: first unit at full price, each next a bit less
+    local tradeValue = GemTypes[gemType].tradeValue
+    local p = pct[gemType]
     local payout = 0
     for _ = 1, qty do
-        payout += p
-        p = math.max(p * SELL_DECAY, floorPrice)
+        payout += tradeValue * p / 100
+        p = math.max(LOWER_PCT, p - SELL_IMPACT)   -- selling pushes the price down
     end
     payout = math.floor(payout)
-    prices[gemType] = math.max(p, floorPrice)
+    pct[gemType] = p
 
-    -- Deduct gems, pay out credits
     data.gems[gemType] = held - qty
     if data.gems[gemType] <= 0 then data.gems[gemType] = nil end
     data.credits             += payout
@@ -113,24 +113,18 @@ function GemMarketManager.Sell(player, gemType, qty)
         })
     end
 
-    return true, {
-        payout  = payout,
-        qty     = qty,
-        price   = math.floor(prices[gemType]),
-        credits = data.credits,
-    }
+    return true, { payout = payout, qty = qty, pct = math.floor(pct[gemType]), credits = data.credits }
 end
 
 function GemMarketManager.StartLoop()
     task.spawn(function()
         while true do
-            task.wait(RECOVERY_TICK)
-            for gemType, price in pairs(prices) do
-                local base = baseOf(gemType)
-                if price < base - 0.5 then
-                    prices[gemType] = price + (base - price) * RECOVERY_RATE
-                end
-                pushHistory(gemType)
+            task.wait(TICK)
+            for gt, p in pairs(pct) do
+                local noise  = (math.random() * 2 - 1) * VOLATILITY
+                local revert = (BASE_PCT - p) * REVERT_RATE
+                pct[gt] = math.clamp(p + noise + revert, LOWER_PCT, upperPct(gt))
+                pushHistory(gt)
             end
             broadcast()
         end

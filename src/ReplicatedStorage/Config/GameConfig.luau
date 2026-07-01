@@ -12,6 +12,19 @@ return {
         [1318952312] = true,
     },
 
+    -- Goals / quests. metric is a stat name; reward = { credits, gemCurrency, gems }.
+    GOALS = {
+        { id = "mine50",   name = "Mine 50 gems",        metric = "gemsCollected",   target = 50,       reward = { credits = 2000 } },
+        { id = "core3",    name = "Reach Core Lv 3",     metric = "coreLevel",       target = 3,        reward = { credits = 5000 } },
+        { id = "craft3",   name = "Craft 3 gear pieces", metric = "gearsCreated",    target = 3,        reward = { credits = 8000 } },
+        { id = "mine250",  name = "Mine 250 gems",       metric = "gemsCollected",   target = 250,      reward = { credits = 10000, gemCurrency = 10 } },
+        { id = "trade10",  name = "Complete 10 trades",  metric = "tradesCompleted", target = 10,       reward = { credits = 6000 } },
+        { id = "earn100k", name = "Earn 100K total",     metric = "totalEarned",     target = 100000,   reward = { gemCurrency = 20 } },
+        { id = "core5",    name = "Reach Core Lv 5",     metric = "coreLevel",       target = 5,        reward = { credits = 20000, gemCurrency = 25 } },
+        { id = "potion3",  name = "Use 3 potions",       metric = "potionsUsed",     target = 3,        reward = { credits = 5000 } },
+        { id = "earn10m",  name = "Earn 10M total",      metric = "totalEarned",     target = 10000000, reward = { gemCurrency = 50 } },
+    },
+
     -- Redeemable promo codes. Keys are UPPERCASE, no spaces. Reward fields:
     -- credits, gemCurrency, gems = { GemType = count }, and a msg shown on redeem.
     CODES = {
@@ -32,7 +45,7 @@ return {
     MIN_MINE_FRACTION   = 0.15,   -- fastest possible = 15% of base mineTime
 
     CORE_UPGRADES = {
-        { key = "overclock",   name = "Overclock",         icon = "⚡", bonusPerLevel = 0.12, baseCost = 100,   growth = 1.13 },
+        { key = "overclock",   name = "Overclock",         icon = "⚡", bonusPerLevel = 0.12, baseCost = 60,    growth = 1.12 },
         { key = "surge",       name = "Power Surge",       icon = "🔋", bonusPerLevel = 0.35, baseCost = 1500,  growth = 1.22 },
         { key = "singularity", name = "Singularity Drive", icon = "🌌", bonusPerLevel = 1.00, baseCost = 75000, growth = 1.30 },
     },

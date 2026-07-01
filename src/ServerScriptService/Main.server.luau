@@ -15,6 +15,7 @@ local MonetizationManager = require(Mods:WaitForChild("MonetizationManager"))
 local PowerCoreModel      = require(Mods:WaitForChild("PowerCoreModel"))
 local GemMarketManager    = require(Mods:WaitForChild("GemMarketManager"))
 local DrillManager        = require(Mods:WaitForChild("DrillManager"))
+local QuestManager        = require(Mods:WaitForChild("QuestManager"))
 local WorldBuilder        = require(Mods:WaitForChild("WorldBuilder"))
 local GameConfig          = require(ReplicatedStorage.Config.GameConfig)
 local GemTypes            = require(ReplicatedStorage.Config.GemTypes)
@@ -69,6 +70,8 @@ local RFn = {
     GetDrillInfo    = fn("GetDrillInfo"),
     AdminAction     = fn("AdminAction"),
     RedeemCode      = fn("RedeemCode"),
+    GetGoals        = fn("GetGoals"),
+    ClaimGoal       = fn("ClaimGoal"),
     BuyCoreUpgrade  = fn("BuyCoreUpgrade"),
     CraftGear       = fn("CraftGear"),
     EquipGear       = fn("EquipGear"),
@@ -92,6 +95,7 @@ PotionManager.Init(DataManager)
 MonetizationManager.Init(DataManager, R)
 GemMarketManager.Init(DataManager, R)
 DrillManager.Init(DataManager)
+QuestManager.Init(DataManager)
 PowerCoreModel.StartAnimation()
 
 -- ── Remote handlers ───────────────────────────────────────────────────────────
@@ -208,6 +212,23 @@ end
 
 RFn.GetDrillInfo.OnServerInvoke = function(p)
     return DrillManager.GetInfo(p)
+end
+
+RFn.GetGoals.OnServerInvoke = function(p)
+    return QuestManager.GetGoals(p)
+end
+
+RFn.ClaimGoal.OnServerInvoke = function(p, goalId)
+    local ok, result = QuestManager.ClaimGoal(p, goalId)
+    if ok then
+        R.UpdateHUD:FireClient(p, {
+            credits     = result.credits,
+            gemCurrency = result.gemCurrency,
+            incomeRate  = PowerCoreManager.GetIncomeRate(p),
+        })
+        R.UpdateInventory:FireClient(p, result.gems)
+    end
+    return ok, result
 end
 
 RFn.RedeemCode.OnServerInvoke = function(p, code)

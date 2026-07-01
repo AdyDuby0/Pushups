@@ -70,7 +70,7 @@ function AdminUI.Init(playerGui, initData, RF)
     -- toggle button (top-left)
     local toggleBtn = Instance.new("TextButton")
     toggleBtn.Size = UDim2.new(0, 120, 0, 34)
-    toggleBtn.Position = UDim2.new(0, 8, 0, 104)
+    toggleBtn.Position = UDim2.new(0, 8, 0, 144)
     toggleBtn.BackgroundColor3 = Color3.fromRGB(110, 30, 30)
     toggleBtn.BorderSizePixel = 0
     toggleBtn.Text = "🛠 Admin"

@@ -36,6 +36,8 @@ local RF = {
     GetDrillInfo      = RemotesFolder:WaitForChild("GetDrillInfo"),
     AdminAction       = RemotesFolder:WaitForChild("AdminAction"),
     RedeemCode        = RemotesFolder:WaitForChild("RedeemCode"),
+    GetGoals          = RemotesFolder:WaitForChild("GetGoals"),
+    ClaimGoal         = RemotesFolder:WaitForChild("ClaimGoal"),
     BuyCoreUpgrade  = RemotesFolder:WaitForChild("BuyCoreUpgrade"),
     CraftGear       = RemotesFolder:WaitForChild("CraftGear"),
     EquipGear       = RemotesFolder:WaitForChild("EquipGear"),
@@ -57,6 +59,7 @@ local GemMarketUI      = require(Modules:WaitForChild("GemMarketUI"))
 local DrillUI          = require(Modules:WaitForChild("DrillUI"))
 local AdminUI          = require(Modules:WaitForChild("AdminUI"))
 local CodesUI          = require(Modules:WaitForChild("CodesUI"))
+local QuestsUI         = require(Modules:WaitForChild("QuestsUI"))
 local TutorialManager  = require(Modules:WaitForChild("TutorialManager"))
 
 if not player.Character then player.CharacterAdded:Wait() end
@@ -79,6 +82,7 @@ ShopUI.Init(playerGui, initData, RF)
 GemMarketUI.Init(playerGui, initData, RF)
 DrillUI.Init(playerGui, initData, RF)
 CodesUI.Init(playerGui, initData, RF)
+QuestsUI.Init(playerGui, initData, RF)
 if initData.isAdmin then
     AdminUI.Init(playerGui, initData, RF)
 end

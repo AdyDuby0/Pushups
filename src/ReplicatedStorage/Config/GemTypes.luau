@@ -8,7 +8,7 @@ return {
         rarityTier  = 1,
         baseFuel    = 5,
         color       = Color3.fromRGB(100, 200, 255),
-        mineTime    = 45,       -- 45 seconds
+        mineTime    = 30,       -- 30 seconds
         tradeValue  = 30,
     },
     Voidstone = {
@@ -17,7 +17,7 @@ return {
         rarityTier  = 2,
         baseFuel    = 20,
         color       = Color3.fromRGB(150, 50, 255),
-        mineTime    = 240,      -- 4 minutes
+        mineTime    = 180,      -- 3 minutes
         tradeValue  = 150,
     },
     Neutronium = {
