@@ -30,6 +30,7 @@ local RF = {
     CreateListing   = RemotesFolder:WaitForChild("CreateListing"),
     CancelListing   = RemotesFolder:WaitForChild("CancelListing"),
     BuyListing      = RemotesFolder:WaitForChild("BuyListing"),
+    SellAllGems     = RemotesFolder:WaitForChild("SellAllGems"),
     StartDrill        = RemotesFolder:WaitForChild("StartDrill"),
     StopDrill         = RemotesFolder:WaitForChild("StopDrill"),
     SetDrillGem       = RemotesFolder:WaitForChild("SetDrillGem"),
@@ -71,6 +72,8 @@ local CodesUI          = require(Modules:WaitForChild("CodesUI"))
 local QuestsUI         = require(Modules:WaitForChild("QuestsUI"))
 local RebirthUI        = require(Modules:WaitForChild("RebirthUI"))
 local RewardsUI        = require(Modules:WaitForChild("RewardsUI"))
+local Effects          = require(Modules:WaitForChild("Effects"))
+local Sounds           = require(Modules:WaitForChild("Sounds"))
 local TutorialManager  = require(Modules:WaitForChild("TutorialManager"))
 
 if not player.Character then player.CharacterAdded:Wait() end
@@ -83,6 +86,7 @@ HUD.Init(playerGui, initData, {
     teleportPlot   = function() R.Teleport:FireServer("plot") end,
     teleportCenter = function() R.Teleport:FireServer("center") end,
 })
+Effects.Init(playerGui)
 PlotUI.Init(playerGui, initData, RF, {
     onCoreOpened = function() TutorialManager.OnCoreOpened() end,
     onFirstSlot  = function() TutorialManager.OnFirstSlot() end,
@@ -151,6 +155,7 @@ R.GemExtracted.OnClientEvent:Connect(function(gemType, heldCount, nextMineTime)
     local gd = GemTypes[gemType]
     local displayName = gd and gd.displayName or gemType
     HUD.ShowFloatingText("+1 " .. displayName, gd and gd.color or Color3.fromRGB(80, 255, 80))
+    Sounds.Play("mine", 0.35, 0.9 + math.random() * 0.2)
 
     if firstMine then
         firstMine = false

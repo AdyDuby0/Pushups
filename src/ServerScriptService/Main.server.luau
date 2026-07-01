@@ -66,6 +66,7 @@ local RFn = {
     CreateListing   = fn("CreateListing"),
     CancelListing   = fn("CancelListing"),
     BuyListing      = fn("BuyListing"),
+    SellAllGems     = fn("SellAllGems"),
     StartDrill      = fn("StartDrill"),
     StopDrill       = fn("StopDrill"),
     SetDrillGem     = fn("SetDrillGem"),
@@ -186,6 +187,10 @@ end
 
 RFn.SellToNPC.OnServerInvoke = function(p, gemType, qty)
     return GemMarketManager.Sell(p, gemType, qty)
+end
+
+RFn.SellAllGems.OnServerInvoke = function(p)
+    return GemMarketManager.SellAll(p)
 end
 
 RFn.StartDrill.OnServerInvoke = function(p)

@@ -125,6 +125,25 @@ function GemMarketManager.Sell(player, gemType, qty)
     return true, { payout = payout, qty = qty, pct = math.floor(pct[gemType]), credits = data.credits }
 end
 
+-- Sell every gem the player holds, each at its current price
+function GemMarketManager.SellAll(player)
+    local data = DataManager.Get(player)
+    if not data then return false, "No data" end
+
+    local toSell = {}
+    for gt, cnt in pairs(data.gems) do
+        if cnt and cnt > 0 and GemTypes[gt] then toSell[gt] = cnt end
+    end
+    if next(toSell) == nil then return false, "No gems to sell" end
+
+    local total = 0
+    for gt, cnt in pairs(toSell) do
+        local ok, res = GemMarketManager.Sell(player, gt, cnt)
+        if ok then total += res.payout end
+    end
+    return true, { payout = total, credits = data.credits }
+end
+
 function GemMarketManager.StartLoop()
     task.spawn(function()
         while true do

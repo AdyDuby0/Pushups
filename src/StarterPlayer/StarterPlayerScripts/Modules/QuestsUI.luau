@@ -8,6 +8,7 @@ local RF_ref
 local listFrame
 local questsPanel
 local questsOpen = false
+local objectiveBanner
 
 local function fmt(n)
     n = math.floor(n)
@@ -89,6 +90,28 @@ local function makeRow(goal)
     end
 end
 
+-- Persistent "do this next" beacon
+local function updateObjective()
+    if not (objectiveBanner and RF_ref) then return end
+    local goals = RF_ref.GetGoals:InvokeServer() or {}
+    local claimable, nextInc
+    for _, g in ipairs(goals) do
+        if g.claimable and not claimable then claimable = g end
+        if not g.claimed and g.progress < g.target and not nextInc then nextInc = g end
+    end
+    if claimable then
+        objectiveBanner.Text = "🎯 Claim reward: " .. claimable.name .. "!"
+        objectiveBanner.BackgroundColor3 = Color3.fromRGB(45, 120, 60)
+        objectiveBanner.Visible = true
+    elseif nextInc then
+        objectiveBanner.Text = "🎯 " .. nextInc.name .. "  (" .. fmt(nextInc.progress) .. "/" .. fmt(nextInc.target) .. ")"
+        objectiveBanner.BackgroundColor3 = Color3.fromRGB(38, 38, 66)
+        objectiveBanner.Visible = true
+    else
+        objectiveBanner.Visible = false
+    end
+end
+
 function refresh()
     if not listFrame then return end
     for _, c in ipairs(listFrame:GetChildren()) do
@@ -96,6 +119,7 @@ function refresh()
     end
     local goals = RF_ref.GetGoals:InvokeServer() or {}
     for _, g in ipairs(goals) do makeRow(g) end
+    updateObjective()
 end
 
 function QuestsUI.Init(playerGui, initData, RF)
@@ -148,9 +172,28 @@ function QuestsUI.Init(playerGui, initData, RF)
     listFrame = scroll
     local layout = Instance.new("UIListLayout"); layout.Padding = UDim.new(0, 5); layout.Parent = scroll
 
+    -- persistent objective beacon (top-center), click to open Goals
+    objectiveBanner = Instance.new("TextButton")
+    objectiveBanner.Size = UDim2.new(0, 380, 0, 32)
+    objectiveBanner.Position = UDim2.new(0.5, 0, 0, 8); objectiveBanner.AnchorPoint = Vector2.new(0.5, 0)
+    objectiveBanner.BackgroundColor3 = Color3.fromRGB(38, 38, 66); objectiveBanner.BackgroundTransparency = 0.1
+    objectiveBanner.BorderSizePixel = 0; objectiveBanner.Text = ""
+    objectiveBanner.TextColor3 = Color3.fromRGB(255, 230, 160); objectiveBanner.Font = Enum.Font.GothamBold
+    objectiveBanner.TextScaled = true; objectiveBanner.Visible = false; objectiveBanner.Parent = gui
+    corner(objectiveBanner, 8)
+    objectiveBanner.MouseButton1Click:Connect(function() QuestsUI.Open() end)
+
     questsPanel = panel
     Panels.Register("Quests", function() questsOpen = false; panel.Visible = false end)
     toggleBtn.MouseButton1Click:Connect(function() QuestsUI.Toggle() end)
+
+    task.spawn(function()
+        while true do updateObjective(); task.wait(12) end
+    end)
+end
+
+function QuestsUI.Open()
+    if questsPanel and not questsOpen then QuestsUI.Toggle() end
 end
 
 function QuestsUI.Toggle()

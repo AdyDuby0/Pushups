@@ -3,6 +3,8 @@
 
 local Panels     = require(script.Parent:WaitForChild("Panels"))
 local Responsive = require(script.Parent:WaitForChild("Responsive"))
+local Effects    = require(script.Parent:WaitForChild("Effects"))
+local Sounds     = require(script.Parent:WaitForChild("Sounds"))
 
 local RebirthUI = {}
 local RF_ref
@@ -109,8 +111,15 @@ function RebirthUI.Init(playerGui, initData, RF)
     corner(bodyRefs.btn, 8)
     bodyRefs.btn.MouseButton1Click:Connect(function()
         if not bodyRefs.canRebirth then return end
-        local ok = RF_ref.Rebirth:InvokeServer()
-        if ok then refresh() end
+        local ok, result = RF_ref.Rebirth:InvokeServer()
+        if ok then
+            Effects.Flash(Color3.fromRGB(150, 90, 230), 0.5)
+            if type(result) == "table" then
+                Effects.Popup("🌟 REBIRTH! +" .. (result.gained or 0) .. " prestige", Color3.fromRGB(220, 180, 255))
+            end
+            Sounds.Play("rebirth", 0.7)
+            refresh()
+        end
     end)
 
     rebirthPanel = panel

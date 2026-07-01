@@ -32,6 +32,12 @@ function PowerCoreManager.GetMaxSlots(player)
     if MonetizationManager and MonetizationManager.HasExtraSlots(player) then
         base += 2
     end
+    -- Core Tier grants +1 slot per tier
+    for _, cfg in ipairs(GameConfig.WORKSHOP_UPGRADES) do
+        if cfg.kind == "tier" then
+            base += (data.coreUpgrades and data.coreUpgrades[cfg.key]) or 0
+        end
+    end
     return base
 end
 
@@ -95,7 +101,7 @@ function PowerCoreManager.GetIncomeRate(player)
         upgradeBonus += level * cfg.bonusPerLevel
     end
     for _, cfg in ipairs(GameConfig.WORKSHOP_UPGRADES) do
-        if cfg.kind == "income" then
+        if cfg.kind == "income" or cfg.kind == "tier" then
             local level = (data.coreUpgrades and data.coreUpgrades[cfg.key]) or 0
             upgradeBonus += level * cfg.perLevel
         end

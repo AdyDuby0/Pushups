@@ -4,6 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GemTypes = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GemTypes"))
 local Panels     = require(script.Parent:WaitForChild("Panels"))
 local Responsive = require(script.Parent:WaitForChild("Responsive"))
+local Effects    = require(script.Parent:WaitForChild("Effects"))
+local Sounds     = require(script.Parent:WaitForChild("Sounds"))
 
 local RewardsUI = {}
 local RF_ref
@@ -151,6 +153,9 @@ function RewardsUI.Init(playerGui, initData, RF)
         if ok and type(result) == "table" then
             chargeReadyAt = os.clock() + chargeInterval
             chargeLbl.Text = "⚡ +💰 " .. fmt(result.reward) .. "  (Core Surge!)"
+            Effects.Popup("⚡ +💰 " .. fmt(result.reward), Color3.fromRGB(255, 210, 90))
+            Effects.Flash(Color3.fromRGB(255, 210, 90), 0.3)
+            Sounds.Play("claim", 0.6)
         end
     end)
 
@@ -205,8 +210,15 @@ function RewardsUI.Init(playerGui, initData, RF)
     corner(dailyBody.claim, 8)
     dailyBody.claim.MouseButton1Click:Connect(function()
         if not dailyBody.canClaim then return end
-        local ok = RF_ref.ClaimDaily:InvokeServer()
-        if ok then refreshDaily() end
+        local ok, result = RF_ref.ClaimDaily:InvokeServer()
+        if ok then
+            if type(result) == "table" and result.reward then
+                Effects.Popup("🌌 " .. rewardText(result.reward), Color3.fromRGB(180, 200, 255))
+                Effects.Flash(Color3.fromRGB(120, 140, 255), 0.3)
+            end
+            Sounds.Play("claim", 0.6)
+            refreshDaily()
+        end
     end)
 
     dailyPanel = panel

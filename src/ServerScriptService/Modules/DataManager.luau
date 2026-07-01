@@ -14,7 +14,7 @@ local DEFAULT_DATA = {
     coreLevel       = 1,
     coreSlots       = {},
     -- Repeatable core upgrades: { upgradeKey = level }
-    coreUpgrades    = { overclock = 0, surge = 0, singularity = 0, drilltuning = 0, plasmabore = 0, corepower = 0, drillpower = 0, marketval = 0 },
+    coreUpgrades    = { overclock = 0, surge = 0, singularity = 0, drilltuning = 0, plasmabore = 0, corepower = 0, drillpower = 0, marketval = 0, coretier = 0 },
     -- The plot drill: which gem it's set to mine, and how deep it can reach.
     drill           = { gemType = "Crystite", depth = 1 },
     -- Redeemed promo codes: { CODE = true }

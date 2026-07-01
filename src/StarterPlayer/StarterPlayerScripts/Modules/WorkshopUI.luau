@@ -3,6 +3,7 @@
 
 local Panels     = require(script.Parent:WaitForChild("Panels"))
 local Responsive = require(script.Parent:WaitForChild("Responsive"))
+local Sounds     = require(script.Parent:WaitForChild("Sounds"))
 
 local WorkshopUI = {}
 local RF_ref
@@ -40,6 +41,7 @@ local function effectText(u)
     local now = math.floor(u.level * u.perLevel * 100 + 0.5)
     if u.kind == "income" then return string.format("+%d%% income/lvl  •  now +%d%%", per, now)
     elseif u.kind == "mining" then return string.format("-%d%% mine time/lvl  •  now -%d%%", per, now)
+    elseif u.kind == "tier" then return string.format("+%d%% income & +1 slot/lvl  •  now +%d%%", per, now)
     else return string.format("+%d%% sell value/lvl  •  now +%d%%", per, now) end
 end
 
@@ -76,6 +78,7 @@ function refresh(info)
             local ok, result = RF_ref.BuyCoreUpgrade:InvokeServer(capKey)
             if ok then
                 if type(result) == "table" and result.credits then credits = result.credits end
+                Sounds.Play("purchase", 0.5)
                 refetch()
             end
         end)

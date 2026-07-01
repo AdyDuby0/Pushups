@@ -7,6 +7,17 @@ return {
     SAVE_INTERVAL       = 60,
     LEADERBOARD_RATE    = 5,
 
+    -- Sound asset IDs (paste rbxassetid:// URLs from the Creator Store → Audio).
+    -- Empty = silent no-op, so the game works before you add them.
+    SOUNDS = {
+        mine     = "",   -- gem mined
+        purchase = "",   -- upgrade / buy
+        sell     = "",   -- gems sold
+        claim    = "",   -- charge / daily / goal claimed
+        rebirth  = "",   -- rebirth
+        ui       = "",   -- panel open (optional)
+    },
+
     -- Admin (dev) menu access — restricted to exactly these UserIds.
     ADMIN_IDS = {
         [1318952312] = true,
@@ -81,9 +92,11 @@ return {
     --   income → +perLevel income   |   mining → -perLevel mine time
     --   market → +perLevel gem sell value
     WORKSHOP_UPGRADES = {
-        { key = "corepower",  name = "Core Power",   icon = "💠", kind = "income", perLevel = 0.15, baseCost = 500,  growth = 1.15 },
-        { key = "drillpower", name = "Drill Power",  icon = "⛏", kind = "mining", perLevel = 0.02, baseCost = 800,  growth = 1.17 },
-        { key = "marketval",  name = "Market Value", icon = "📈", kind = "market", perLevel = 0.05, baseCost = 1200, growth = 1.16 },
+        { key = "corepower",  name = "Core Power",   icon = "💠", kind = "income", perLevel = 0.15, baseCost = 500,     growth = 1.15 },
+        { key = "drillpower", name = "Drill Power",  icon = "⛏", kind = "mining", perLevel = 0.02, baseCost = 800,     growth = 1.17 },
+        { key = "marketval",  name = "Market Value", icon = "📈", kind = "market", perLevel = 0.05, baseCost = 1200,    growth = 1.16 },
+        -- Ceiling-breaker: a big discrete wall. +100% income AND +1 slot per tier.
+        { key = "coretier",   name = "Core Tier",    icon = "🌟", kind = "tier",  perLevel = 1.00, baseCost = 1000000, growth = 6.5 },
     },
 
     -- Permanent, repeatable drill upgrades that cut mine time (credits-based).

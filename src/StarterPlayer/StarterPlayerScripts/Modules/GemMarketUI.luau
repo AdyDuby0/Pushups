@@ -6,6 +6,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GemTypes          = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GemTypes"))
 local Panels            = require(script.Parent:WaitForChild("Panels"))
 local Responsive        = require(script.Parent:WaitForChild("Responsive"))
+local Effects           = require(script.Parent:WaitForChild("Effects"))
+local Sounds            = require(script.Parent:WaitForChild("Sounds"))
 
 local GemMarketUI = {}
 local RF_ref
@@ -180,9 +182,13 @@ function refresh()
                 local q = qtyFn()
                 if q < 1 then return end
                 local ok, result = RF_ref.SellToNPC:InvokeServer(selected, q)
-                if ok and type(result) == "table" and statusLbl then
-                    statusLbl.Text = "Sold " .. result.qty .. " " .. gd.displayName .. " for 💰 " .. fmt(result.payout)
-                    statusLbl.TextColor3 = Color3.fromRGB(120, 230, 150)
+                if ok and type(result) == "table" then
+                    if statusLbl then
+                        statusLbl.Text = "Sold " .. result.qty .. " " .. gd.displayName .. " for 💰 " .. fmt(result.payout)
+                        statusLbl.TextColor3 = Color3.fromRGB(120, 230, 150)
+                    end
+                    Effects.Popup("+💰 " .. fmt(result.payout), Color3.fromRGB(255, 220, 90))
+                    Sounds.Play("sell", 0.5)
                 end
             end)
         end
@@ -243,12 +249,31 @@ function GemMarketUI.Init(playerGui, initData, RF)
     })
 
     local scroll = Instance.new("ScrollingFrame")
-    scroll.Size = UDim2.new(1, -8, 0, 200); scroll.Position = UDim2.new(0, 4, 0, 66)
+    scroll.Size = UDim2.new(1, -8, 0, 174); scroll.Position = UDim2.new(0, 4, 0, 66)
     scroll.BackgroundTransparency = 1; scroll.BorderSizePixel = 0
     scroll.ScrollBarThickness = 4; scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y; scroll.Parent = panel
     listFrame = scroll
     local layout = Instance.new("UIListLayout"); layout.Padding = UDim.new(0, 4); layout.Parent = scroll
+
+    local sellAllBtn = Instance.new("TextButton")
+    sellAllBtn.Size = UDim2.new(1, -8, 0, 30); sellAllBtn.Position = UDim2.new(0, 4, 0, 244)
+    sellAllBtn.BackgroundColor3 = Color3.fromRGB(150, 100, 30); sellAllBtn.BorderSizePixel = 0
+    sellAllBtn.Text = "💰 Sell Everything (best prices)"; sellAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    sellAllBtn.Font = Enum.Font.GothamBold; sellAllBtn.TextScaled = true; sellAllBtn.Parent = panel
+    corner(sellAllBtn, 6)
+    sellAllBtn.MouseButton1Click:Connect(function()
+        local ok, result = RF_ref.SellAllGems:InvokeServer()
+        if ok and type(result) == "table" then
+            if statusLbl then
+                statusLbl.Text = "Sold everything for 💰 " .. fmt(result.payout)
+                statusLbl.TextColor3 = Color3.fromRGB(120, 230, 150)
+            end
+            Effects.Popup("+💰 " .. fmt(result.payout), Color3.fromRGB(255, 220, 90))
+            Effects.Flash(Color3.fromRGB(255, 210, 90), 0.25)
+            Sounds.Play("sell", 0.6)
+        end
+    end)
 
     detailFrame = Instance.new("Frame")
     detailFrame.Size = UDim2.new(1, -8, 1, -300); detailFrame.Position = UDim2.new(0, 4, 0, 274)
