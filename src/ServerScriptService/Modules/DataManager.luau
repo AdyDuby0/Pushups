@@ -84,6 +84,7 @@ end
 function DataManager.Save(player)
     local data = cache[player.UserId]
     if not data then return end
+    data.lastSeen = os.time()   -- autosaves keep this fresh for offline earnings
     local key = "p_" .. player.UserId
     local ok, err = pcall(STORE.SetAsync, STORE, key, data)
     if not ok then warn("[DataManager] Save failed for", player.Name, err) end

@@ -75,7 +75,8 @@ local function broadcast()
     end
 end
 
-function GemMarketManager.Sell(player, gemType, qty)
+-- `quiet` skips the market broadcast + client updates (used by SellAll to batch)
+function GemMarketManager.Sell(player, gemType, qty, quiet)
     local data = DataManager.Get(player)
     if not data then return false, "No data" end
     if not GemTypes[gemType] then return false, "Unknown gem" end
@@ -112,14 +113,15 @@ function GemMarketManager.Sell(player, gemType, qty)
     data.stats.tradesCompleted = (data.stats.tradesCompleted or 0) + 1
 
     pushHistory(gemType)
-    broadcast()
-
-    if Remotes then
-        Remotes.UpdateInventory:FireClient(player, data.gems)
-        Remotes.UpdateHUD:FireClient(player, {
-            credits     = data.credits,
-            totalEarned = data.totalEarned,
-        })
+    if not quiet then
+        broadcast()
+        if Remotes then
+            Remotes.UpdateInventory:FireClient(player, data.gems)
+            Remotes.UpdateHUD:FireClient(player, {
+                credits     = data.credits,
+                totalEarned = data.totalEarned,
+            })
+        end
     end
 
     return true, { payout = payout, qty = qty, pct = math.floor(pct[gemType]), credits = data.credits }
@@ -138,8 +140,18 @@ function GemMarketManager.SellAll(player)
 
     local total = 0
     for gt, cnt in pairs(toSell) do
-        local ok, res = GemMarketManager.Sell(player, gt, cnt)
+        local ok, res = GemMarketManager.Sell(player, gt, cnt, true)   -- quiet
         if ok then total += res.payout end
+    end
+
+    -- one batched update instead of one per gem type
+    broadcast()
+    if Remotes then
+        Remotes.UpdateInventory:FireClient(player, data.gems)
+        Remotes.UpdateHUD:FireClient(player, {
+            credits     = data.credits,
+            totalEarned = data.totalEarned,
+        })
     end
     return true, { payout = total, credits = data.credits }
 end

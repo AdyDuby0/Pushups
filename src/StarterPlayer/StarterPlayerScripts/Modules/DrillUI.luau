@@ -73,7 +73,12 @@ local refresh   -- forward decl
 
 local function refetch()
     local info = RF_ref.GetDrillInfo:InvokeServer()
-    if info then drill = info end
+    if info then
+        drill = info
+        -- trust the server about whether we're currently mining (fixes desync
+        -- after UI reloads or a rebirth stopping the session server-side)
+        if info.mining ~= nil then mining = info.mining end
+    end
     refresh()
 end
 

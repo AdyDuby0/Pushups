@@ -92,8 +92,9 @@ function GemManager.StartMining(player, gemType)
             data = DataManager.Get(player)
             if not data then return end
 
-            local held = data.gems[gemType] or 0
-            if held < GameConfig.INVENTORY_MAX then
+            local held  = data.gems[gemType] or 0
+            local added = held < GameConfig.INVENTORY_MAX
+            if added then
                 data.gems[gemType]          = held + 1
                 data.stats.gemsCollected    += 1
             end
@@ -101,7 +102,8 @@ function GemManager.StartMining(player, gemType)
             if Remotes then
                 Remotes.UpdateInventory:FireClient(player, data.gems)
                 local newHeld = data.gems[gemType] or 0
-                Remotes.GemExtracted:FireClient(player, gemType, newHeld, waitTime)
+                -- 4th arg tells the client whether the gem actually landed
+                Remotes.GemExtracted:FireClient(player, gemType, newHeld, waitTime, not added)
             end
         end
     end)

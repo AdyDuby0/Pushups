@@ -27,6 +27,9 @@ local function isAdmin(player)
     return GameConfig.ADMIN_IDS[player.UserId] == true
 end
 
+-- Offline earnings granted at join, reported once through GetInitialData
+local pendingOffline = {}   -- userId -> { amount, seconds }
+
 -- Build the playable world (plots, fences, stations, gem nodes, lighting)
 -- before anything tries to find them.
 WorldBuilder.Build()
@@ -116,6 +119,8 @@ PowerCoreModel.StartAnimation()
 RFn.GetInitialData.OnServerInvoke = function(player)
     local data = DataManager.Get(player)
     if not data then return nil end
+    local offline = pendingOffline[player.UserId]
+    pendingOffline[player.UserId] = nil   -- deliver once
     return {
         credits         = data.credits,
         gemCurrency     = data.gemCurrency or 0,
@@ -137,6 +142,7 @@ RFn.GetInitialData.OnServerInvoke = function(player)
         rebirth         = RebirthManager.GetInfo(player),
         daily           = RewardsManager.GetDailyInfo(player),
         charge          = RewardsManager.GetChargeInfo(player),
+        offlineEarnings = offline,
         isAdmin         = isAdmin(player),
     }
 end
@@ -231,7 +237,9 @@ RFn.UpgradeDrillDepth.OnServerInvoke = function(p)
 end
 
 RFn.GetDrillInfo.OnServerInvoke = function(p)
-    return DrillManager.GetInfo(p)
+    local info = DrillManager.GetInfo(p)
+    info.mining = GemManager.IsMining(p)   -- keep the client's toggle in sync
+    return info
 end
 
 RFn.GetWorkshopInfo.OnServerInvoke = function(p)
@@ -282,6 +290,12 @@ end
 RFn.Rebirth.OnServerInvoke = function(p)
     local ok, result = RebirthManager.Rebirth(p)
     if ok then
+        -- Stop the active drill session — the drill reset to depth 1, so the old
+        -- (possibly high-tier) mining session must not survive the rebirth.
+        GemManager.StopMining(p)
+        local _, plotIdx = PlotManager.GetPlot(p)
+        if plotIdx then WorldBuilder.SetDrillSpinning(plotIdx, false) end
+
         local data = DataManager.Get(p)
         R.UpdateHUD:FireClient(p, {
             credits    = data.credits,
@@ -520,8 +534,24 @@ local function ensureLeaderstats(player)
 end
 
 Players.PlayerAdded:Connect(function(player)
-    DataManager.Load(player)
+    local data = DataManager.Load(player)
     ensureLeaderstats(player)
+
+    -- Offline earnings: pay out a fraction of income for time away (capped)
+    if data and data.lastSeen and data.lastSeen > 0 then
+        local away = os.time() - data.lastSeen
+        if away > 60 then
+            local capped = math.min(away, GameConfig.OFFLINE_CAP_HOURS * 3600)
+            local rate   = PowerCoreManager.GetIncomeRate(player)
+            local amount = math.floor(rate * capped * GameConfig.OFFLINE_RATE)
+            if amount > 0 then
+                data.credits             += amount
+                data.totalEarned         += amount
+                data.stats.creditsEarned += amount
+                pendingOffline[player.UserId] = { amount = amount, seconds = capped }
+            end
+        end
+    end
     player.CharacterAdded:Connect(function()
         task.wait(1)
         local plot, idx = PlotManager.Assign(player)
@@ -545,6 +575,7 @@ Players.PlayerRemoving:Connect(function(player)
         WorldBuilder.SetDrillSpinning(idx, false)
     end
     RewardsManager.Cleanup(player)
+    pendingOffline[player.UserId] = nil
     PlotManager.Release(player)
     DataManager.Unload(player)
 end)

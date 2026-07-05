@@ -28,6 +28,11 @@ return {
     PRESTIGE_DIVISOR = 10000,
     PRESTIGE_BONUS   = 0.10,
 
+    -- Offline earnings: returning players get OFFLINE_RATE of their income for
+    -- time away, capped at OFFLINE_CAP_HOURS.
+    OFFLINE_RATE      = 0.5,
+    OFFLINE_CAP_HOURS = 8,
+
     -- ⚡ Core Charge (playtime reward): the core charges over CHARGE_INTERVAL
     -- seconds; claiming pays ~2 min of income (min CHARGE_BASE), grows each claim
     -- this session, and applies the Core Surge buff.

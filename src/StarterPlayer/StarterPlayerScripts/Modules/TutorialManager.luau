@@ -122,7 +122,7 @@ local function attachNodeArrow(node)
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(1, 0, 1, 0)
     lbl.BackgroundTransparency = 1
-    lbl.Text = "▼  CLICK ME"
+    lbl.Text = "▼  HOLD [E]"
     lbl.TextColor3 = Color3.fromRGB(80, 255, 80)
     lbl.Font = Enum.Font.GothamBold
     lbl.TextScaled = true
@@ -141,20 +141,21 @@ local function attachNodeArrow(node)
     end)
 end
 
+-- Point the arrow at the nearest plot Drill (the old GemNodes folder is gone)
 local function findNearestNode()
     local char = Players.LocalPlayer.Character
     if not char then return nil end
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return nil end
 
-    local folder = workspace:FindFirstChild("GemNodes")
-    if not folder then return nil end
+    local plots = workspace:FindFirstChild("Plots")
+    if not plots then return nil end
 
     local best, bestDist = nil, math.huge
-    for _, node in ipairs(folder:GetChildren()) do
-        if node:IsA("BasePart") then
-            local d = (node.Position - hrp.Position).Magnitude
-            if d < bestDist then best, bestDist = node, d end
+    for _, d in ipairs(plots:GetDescendants()) do
+        if d:IsA("BasePart") and d.Name == "Drill" then
+            local dist = (d.Position - hrp.Position).Magnitude
+            if dist < bestDist then best, bestDist = d, dist end
         end
     end
     return best

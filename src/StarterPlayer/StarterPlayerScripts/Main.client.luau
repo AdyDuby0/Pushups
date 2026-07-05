@@ -106,6 +106,25 @@ if initData.isAdmin then
 end
 TutorialManager.Start(playerGui, initData)
 
+-- Welcome back: show offline earnings once
+if initData.offlineEarnings and initData.offlineEarnings.amount and initData.offlineEarnings.amount > 0 then
+    local off = initData.offlineEarnings
+    local hrs = math.floor(off.seconds / 3600)
+    local mins = math.floor((off.seconds % 3600) / 60)
+    local awayText = hrs > 0 and (hrs .. "h " .. mins .. "m") or (mins .. "m")
+    task.delay(1.5, function()
+        local fmtAmount
+        local a = off.amount
+        if a >= 1e9 then fmtAmount = string.format("%.1fB", a/1e9)
+        elseif a >= 1e6 then fmtAmount = string.format("%.1fM", a/1e6)
+        elseif a >= 1e3 then fmtAmount = string.format("%.1fK", a/1e3)
+        else fmtAmount = tostring(a) end
+        Effects.Popup("⏰ Welcome back! +💰 " .. fmtAmount, Color3.fromRGB(120, 220, 160))
+        HUD.ShowNotification("Your core earned 💰 " .. fmtAmount .. " while you were away (" .. awayText .. ")")
+        Sounds.Play("claim", 0.5)
+    end)
+end
+
 -- ── Server event hooks ────────────────────────────────────────────────────────
 
 R.UpdateHUD.OnClientEvent:Connect(function(hudData)
@@ -148,14 +167,19 @@ R.UpdateMarket.OnClientEvent:Connect(function(newListings)
 end)
 
 local firstMine = true
--- GemExtracted fires once per completed drill round: (gemType, heldCount, nextMineTime)
-R.GemExtracted.OnClientEvent:Connect(function(gemType, heldCount, nextMineTime)
+-- GemExtracted fires once per completed drill round:
+-- (gemType, heldCount, nextMineTime, inventoryFull)
+R.GemExtracted.OnClientEvent:Connect(function(gemType, heldCount, nextMineTime, full)
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local GemTypes = require(ReplicatedStorage:WaitForChild("Config"):WaitForChild("GemTypes"))
     local gd = GemTypes[gemType]
     local displayName = gd and gd.displayName or gemType
-    HUD.ShowFloatingText("+1 " .. displayName, gd and gd.color or Color3.fromRGB(80, 255, 80))
-    Sounds.Play("mine", 0.35, 0.9 + math.random() * 0.2)
+    if full then
+        HUD.ShowFloatingText("Inventory full — sell at the Exchange!", Color3.fromRGB(255, 110, 110))
+    else
+        HUD.ShowFloatingText("+1 " .. displayName, gd and gd.color or Color3.fromRGB(80, 255, 80))
+        Sounds.Play("mine", 0.35, 0.9 + math.random() * 0.2)
+    end
 
     if firstMine then
         firstMine = false
