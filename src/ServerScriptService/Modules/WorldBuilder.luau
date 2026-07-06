@@ -15,9 +15,11 @@
 local Lighting   = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 
+local StationModels = require(script.Parent.StationModels)
+
 local WorldBuilder = {}
 
-local drillBits = {}   -- plotIndex -> { part, rest = CFrame }
+local drillBits = {}   -- plotIndex -> { parts = { { part, rest }, ... } }
 local drillSpin = {}   -- plotIndex -> bool (spin while the owner is mining)
 
 -- ── Layout constants ────────────────────────────────────────────────────────
@@ -174,83 +176,17 @@ local function buildSpawn(plot, plotCF)
     return spawn
 end
 
--- ── Drill (front-right corner of the plot) ──────────────────────────────────
+-- ── Drill (front-right corner; detailed rig lives in StationModels) ──────────
 local function buildDrill(plot, plotCF)
-    local lx, lz = 13, 6
-    local ORANGE = Color3.fromRGB(255, 170, 80)
-
-    local housing = place(plot, plotCF, CFrame.new(lx, 1.5, lz), {
-        Name = "Drill", Size = Vector3.new(5.5, 3, 5.5),
-        Color = Color3.fromRGB(46, 46, 60), Material = Enum.Material.Metal,
-    })
-    housing:SetAttribute("StationType", "Drill")
-    addPrompt(housing, "Open", "Drill")
-
-    for _, dx in ipairs({ -2, 2 }) do
-        place(plot, plotCF, CFrame.new(lx + dx, 5, lz), {
-            Name = "DrillLeg", Size = Vector3.new(0.5, 7, 0.5),
-            Color = Color3.fromRGB(70, 70, 88), Material = Enum.Material.Metal, CanCollide = false,
-        })
-    end
-    place(plot, plotCF, CFrame.new(lx, 8.6, lz), {
-        Name = "DrillTop", Size = Vector3.new(5, 0.8, 1.4),
-        Color = Color3.fromRGB(70, 70, 88), Material = Enum.Material.Metal, CanCollide = false,
-    })
-    -- flat auger blade (a plain cylinder spinning on its own axis would look
-    -- static, so the bit is a blade that visibly sweeps as it spins about Y)
-    local bit = place(plot, plotCF, CFrame.new(lx, 4.2, lz), {
-        Name = "DrillBit", Size = Vector3.new(2.2, 5.5, 0.4),
-        Color = Color3.fromRGB(150, 150, 168), Material = Enum.Material.Metal, CanCollide = false,
-    })
-    place(plot, plotCF, CFrame.new(lx, 3.2, lz), {
-        Name = "DrillGlow", Shape = Enum.PartType.Ball, Size = Vector3.new(1.6, 1.6, 1.6),
-        Color = ORANGE, Material = Enum.Material.Neon, CanCollide = false,
-    })
-
-    labelBillboard(housing, 6, "⛏ DRILL", "hold [E]", ORANGE)
-    return bit
+    -- faces the plot doorway (+Z)
+    local cf = plotCF * CFrame.new(13, 0, 6) * CFrame.Angles(0, math.rad(180), 0)
+    return StationModels.BuildDrill(plot, cf)
 end
 
--- ── Crafting machine (front-left corner) ─────────────────────────────────────
+-- ── Crafting fabricator (front-left corner; model in StationModels) ──────────
 local function buildCraftingStation(plot, plotCF)
-    local lx, lz = -13, 6
-    local CYAN = Color3.fromRGB(100, 220, 255)
-
-    -- workbench base (the station body)
-    local bench = place(plot, plotCF, CFrame.new(lx, 1.5, lz), {
-        Name = "Station_Crafting", Size = Vector3.new(5.5, 3, 4),
-        Color = Color3.fromRGB(26, 32, 44), Material = Enum.Material.DiamondPlate,
-    })
-    bench:SetAttribute("StationType", "Crafting")
-    addPrompt(bench, "Open", "Crafting")
-
-    -- back panel + glowing fabricator core
-    place(plot, plotCF, CFrame.new(lx, 4.2, lz - 1.6), {
-        Name = "FabPanel", Size = Vector3.new(5.5, 4.6, 0.5),
-        Color = Color3.fromRGB(38, 44, 58), Material = Enum.Material.Metal, CanCollide = false,
-    })
-    place(plot, plotCF, CFrame.new(lx, 4.4, lz - 1.1), {
-        Name = "FabCore", Shape = Enum.PartType.Ball, Size = Vector3.new(1.8, 1.8, 1.8),
-        Color = CYAN, Material = Enum.Material.Neon, CanCollide = false,
-    })
-    -- gantry arm over the bench
-    place(plot, plotCF, CFrame.new(lx, 6.2, lz - 0.4), {
-        Name = "FabArm", Size = Vector3.new(0.5, 0.5, 2.6),
-        Color = Color3.fromRGB(70, 80, 96), Material = Enum.Material.Metal, CanCollide = false,
-    })
-    place(plot, plotCF, CFrame.new(lx, 5.4, lz + 0.7), {
-        Name = "FabHead", Size = Vector3.new(1.2, 1, 1),
-        Color = Color3.fromRGB(90, 100, 120), Material = Enum.Material.Metal, CanCollide = false,
-    })
-    -- two gear cogs on the bench top
-    for _, dx in ipairs({ -1.7, 1.7 }) do
-        place(plot, plotCF, CFrame.new(lx + dx, 3.3, lz + 0.9) * CFrame.Angles(math.rad(90), 0, 0), {
-            Name = "FabGear", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.5, 1.6, 1.6),
-            Color = Color3.fromRGB(120, 130, 150), Material = Enum.Material.Metal, CanCollide = false,
-        })
-    end
-
-    labelBillboard(bench, 6, "🔧 CRAFTING", "hold [E]", CYAN)
+    local cf = plotCF * CFrame.new(-13, 0, 6) * CFrame.Angles(0, math.rad(180), 0)
+    StationModels.BuildCrafting(plot, cf)
 end
 
 -- ── Power Core platform (back-center, raised, with steps) ────────────────────
@@ -273,29 +209,11 @@ local function buildCorePlatform(plot, plotCF)
     })
 end
 
--- ── Workshop station (deep credit-sink upgrades) ────────────────────────────
+-- ── Workshop console (back-right; model in StationModels) ────────────────────
 local function buildWorkshop(plot, plotCF)
-    local lx, lz = 13, -6
-    local GOLD = Color3.fromRGB(255, 200, 90)
-    local base = place(plot, plotCF, CFrame.new(lx, 2, lz), {
-        Name = "Station_Workshop", Size = Vector3.new(5.5, 4, 4),
-        Color = Color3.fromRGB(32, 30, 26), Material = Enum.Material.DiamondPlate,
-    })
-    base:SetAttribute("StationType", "Workshop")
-    addPrompt(base, "Open", "Workshop")
-    -- angled glowing screen
-    place(plot, plotCF, CFrame.new(lx, 4.7, lz + 0.4) * CFrame.Angles(math.rad(-22), 0, 0), {
-        Name = "WorkshopScreen", Size = Vector3.new(4.4, 2.6, 0.3),
-        Color = GOLD, Material = Enum.Material.Neon, CanCollide = false,
-    })
-    -- gear cogs
-    for _, dx in ipairs({ -1.7, 1.7 }) do
-        place(plot, plotCF, CFrame.new(lx + dx, 4.4, lz - 1.7) * CFrame.Angles(math.rad(90), 0, 0), {
-            Name = "WorkshopGear", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, 1.5, 1.5),
-            Color = Color3.fromRGB(130, 120, 96), Material = Enum.Material.Metal, CanCollide = false,
-        })
-    end
-    labelBillboard(base, 5.2, "⚙️ WORKSHOP", "hold [E]", GOLD)
+    -- faces toward the middle of the plot
+    local cf = plotCF * CFrame.lookAt(Vector3.new(13, 0, -6), Vector3.new(0, 0, 4))
+    StationModels.BuildWorkshop(plot, cf)
 end
 
 -- ── Plot sign ───────────────────────────────────────────────────────────────
@@ -321,22 +239,6 @@ end
 local HUB_TOP    = 2.5
 local HUB_RADIUS = 26
 
-local function buildStationPillar(model, pos, stationType, title, subtitle, color)
-    local base = part(model, {
-        Name = "Station_" .. stationType, Size = Vector3.new(5, 4, 5),
-        Position = pos + Vector3.new(0, 2, 0),
-        Color = Color3.fromRGB(24, 26, 40), Material = Enum.Material.Metal,
-    })
-    base:SetAttribute("StationType", stationType)
-    part(model, {
-        Name = "StationTop", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.6, 5.2, 5.2),
-        CFrame = CFrame.new(pos + Vector3.new(0, 4.3, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-        Color = color, Material = Enum.Material.Neon, CanCollide = false,
-    })
-    addPrompt(base, "Open", stationType)
-    labelBillboard(base, 4.6, title, subtitle, color)
-end
-
 local function buildCenterHub()
     local model = Instance.new("Model"); model.Name = "GemExchange"
 
@@ -357,32 +259,18 @@ local function buildCenterHub()
         buildSteps(model, baseCF, HUB_TOP, 3, 10, Color3.fromRGB(40, 38, 54))
     end
 
-    -- Gem Exchange robot vendor at the center (on the pad)
-    local PURPLE = Color3.fromRGB(255, 170, 90)
-    local torso = part(model, {
-        Name = "VendorTorso", Size = Vector3.new(3.4, 4, 2),
-        Position = CENTER + Vector3.new(0, HUB_TOP + 2, 0),
-        Color = Color3.fromRGB(60, 60, 85), Material = Enum.Material.Metal,
-    })
-    torso:SetAttribute("StationType", "GemMarket")
-    addPrompt(torso, "Sell Gems", "Gem Exchange")
-    part(model, {
-        Name = "VendorHead", Size = Vector3.new(2.4, 2, 2.2),
-        Position = CENTER + Vector3.new(0, HUB_TOP + 5, 0),
-        Color = Color3.fromRGB(75, 75, 105), Material = Enum.Material.Metal,
-    })
-    part(model, {
-        Name = "VendorVisor", Size = Vector3.new(2.0, 0.7, 0.4),
-        Position = CENTER + Vector3.new(0, HUB_TOP + 5.1, -1.05),
-        Color = PURPLE, Material = Enum.Material.Neon, CanCollide = false,
-    })
-    local light = Instance.new("PointLight")
-    light.Color = PURPLE; light.Range = 18; light.Brightness = 1.6; light.Parent = torso
-    labelBillboard(torso, 7, "💹 GEM EXCHANGE", "hold [E]", PURPLE)
+    -- Exchange booth at the center, Market stall and Shop vending machine
+    -- flanking it — all facing outward toward the steps (models in StationModels)
+    StationModels.BuildExchange(model,
+        CFrame.new(CENTER + Vector3.new(0, HUB_TOP, 0)) * CFrame.Angles(0, math.rad(180), 0))
 
-    -- Market + Shop pillars flanking the vendor
-    buildStationPillar(model, CENTER + Vector3.new(-13, HUB_TOP, 8), "Market", "💱 MARKET", "hold [E]", Color3.fromRGB(130, 255, 130))
-    buildStationPillar(model, CENTER + Vector3.new(13, HUB_TOP, 8),  "Shop",   "🛒 SHOP",   "hold [E]", Color3.fromRGB(200, 130, 255))
+    local marketPos = CENTER + Vector3.new(-14, HUB_TOP, 7)
+    StationModels.BuildMarket(model,
+        CFrame.lookAt(marketPos, marketPos + Vector3.new(-14, 0, 7)))
+
+    local shopPos = CENTER + Vector3.new(14, HUB_TOP, 7)
+    StationModels.BuildShop(model,
+        CFrame.lookAt(shopPos, shopPos + Vector3.new(14, 0, 7)))
 
     model.Parent = workspace
     return model
@@ -439,12 +327,12 @@ function WorldBuilder.Build()
         buildFence(plot, cf)
         local spawn = buildSpawn(plot, cf)
         buildCorePlatform(plot, cf)
-        local bit = buildDrill(plot, cf)
+        local _, auger = buildDrill(plot, cf)
         buildCraftingStation(plot, cf)
         buildWorkshop(plot, cf)
         signLabels[i] = buildSign(plot, cf, i)
 
-        drillBits[i] = { part = bit, rest = bit.CFrame }
+        drillBits[i] = { parts = auger }
         drillSpin[i] = false
 
         plot.PrimaryPart = spawn
@@ -467,13 +355,19 @@ function WorldBuilder.SetDrillSpinning(index, on)
     if drillSpin[index] ~= nil then drillSpin[index] = on and true or false end
 end
 
--- Drives the drill-bit spin every frame for plots flagged as mining
+-- Drives the auger spin every frame for plots flagged as mining. Each flight
+-- blade is centered on the shaft axis, so spinning each about its own Y axis
+-- rotates the whole helix coherently.
 RunService.Heartbeat:Connect(function()
     local a = os.clock() * 9   -- spin speed
     for idx, on in pairs(drillSpin) do
         local d = drillBits[idx]
-        if on and d and d.part and d.part.Parent then
-            d.part.CFrame = d.rest * CFrame.Angles(0, a, 0)
+        if on and d and d.parts then
+            for _, e in ipairs(d.parts) do
+                if e.part.Parent then
+                    e.part.CFrame = e.rest * CFrame.Angles(0, a, 0)
+                end
+            end
         end
     end
 end)
